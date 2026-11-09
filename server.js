@@ -2,10 +2,10 @@
 /*
  * Review Rally – kleiner Team-Server ohne Abhängigkeiten.
  *
- *   node server.js            → http://localhost:8080
+ *   node server.js            → http://localhost:3000
  *
  * Umgebungsvariablen:
- *   PORT      (Standard 8080)
+ *   PORT      (Standard 3000)
  *   HOST      (Standard 0.0.0.0)
  *   DATA_DIR  (Standard ./data) – hier liegt state.json, im Cluster ein Volume mounten
  *
@@ -28,7 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const FILE = path.join(DATA_DIR, 'state.json');
@@ -188,5 +188,24 @@ const server = http.createServer(async (req, res) => {
   catch(e){ console.error('[rally]', req.method, url.pathname, e.message); if(!res.headersSent) send(res, e.code >= 400 && e.code < 600 ? e.code : 500, {error: e.message}); }
 });
 
-server.listen(PORT, HOST, () => console.log(`[rally] läuft auf http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (Daten: ${FILE})`));
+// Ohne gesetztes PORT (lokal) werden bei Bedarf Ausweich-Ports probiert.
+// Mit gesetztem PORT (z. B. im Cluster) gibt es bewusst keinen Ausweich-Port.
+const candidates = process.env.PORT ? [PORT] : [PORT, 3001, 5000, 8888, 9090];
+let attempt = 0;
+server.on('error', e => {
+  const port = candidates[attempt];
+  if(e.code === 'EACCES' || e.code === 'EADDRINUSE'){
+    const why = e.code === 'EADDRINUSE' ? 'schon belegt' : 'vom System gesperrt, unter Windows oft durch Hyper-V/WSL/Docker reserviert';
+    if(attempt + 1 < candidates.length){
+      console.log(`[rally] Port ${port} ist ${why}, versuche ${candidates[attempt + 1]} …`);
+      attempt++; return listen();
+    }
+    console.error(`[rally] Port ${port} ist nicht verfügbar (${why}).`);
+    console.error(`[rally] Anderen Port wählen, z. B.:  PowerShell: $env:PORT=4000; node server.js   ·   Bash: PORT=4000 node server.js`);
+  } else console.error('[rally] Server-Fehler:', e.message);
+  process.exit(1);
+});
+server.once('listening', () => console.log(`[rally] läuft auf http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${server.address().port}  (Daten: ${FILE})`));
+function listen(){ server.listen(candidates[attempt], HOST); }
+listen();
 for(const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { console.log('[rally] fahre herunter'); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });
