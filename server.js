@@ -7,7 +7,10 @@
  * Umgebungsvariablen:
  *   PORT      (Standard 3000)
  *   HOST      (Standard 0.0.0.0)
- *   DATA_DIR  (Standard ./data) – hier liegt state.json, im Cluster ein Volume mounten
+ *   DATA_DIR  (Standard ./data) – hier liegt state.json
+ *
+ * Speichern: Jede Änderung wird sofort nach data/state.json geschrieben, beim Start wird
+ * sie wieder geladen. Mehr Backup braucht es nicht.
  *
  * API (JSON):
  *   GET  /api/state?v=<version>  → 204 wenn unverändert, sonst {version, state, owners, meOk}
@@ -18,8 +21,8 @@
  *   GET  /healthz                → "ok"
  *
  * "Login": Jedes Profil hat einen geheimen Schlüssel (nur als Hash gespeichert).
- * Name, Tier und Garderobe eines Profils darf nur ändern, wer den Schlüssel mitschickt
- * (Header X-Member / X-Token). Alles andere (Arbeitszeit, Abwesend, PRs, Rennen, XP) ist
+ * Name, Arbeitszeit, Tier und Garderobe eines Profils darf nur ändern, wer den Schlüssel mitschickt
+ * (Header X-Member / X-Token). Alles andere (Abwesend, Löschen, PRs, Rennen, XP) ist
  * für das ganze Team bearbeitbar. Das ist Schutz vor Versehen, keine echte Authentifizierung.
  */
 'use strict';
@@ -35,22 +38,22 @@ const FILE = path.join(DATA_DIR, 'state.json');
 const INDEX = path.join(__dirname, 'index.html');
 const MAX_BODY = 2 * 1024 * 1024;
 
-const PROTECTED = ['name', 'animal', 'look'];   // nur mit eigenem Schlüssel änderbar
+const PROTECTED = ['name', 'animal', 'look', 'pct'];   // nur mit eigenem Schlüssel änderbar
 const TOP_FIELDS = ['seasonNo', 'seasonStart'];
 const COLLECTIONS = ['members', 'prs'];
 
-/* ---------- Speicher ---------- */
+/* ---------- Speicher: eine state.json, bei jeder Änderung geschrieben, beim Start geladen ---------- */
 function emptyDb(){
   return {version: 1, state: {members: [], prs: [], seasonNo: 1, seasonStart: Date.now()}, auth: {}};
 }
 function loadDb(){
   try {
-    const db = JSON.parse(fs.readFileSync(FILE, 'utf8'));
-    db.auth = db.auth || {};
-    return db;
+    const d = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+    d.auth = d.auth || {};
+    return d;
   } catch(e){
-    if(e.code === 'ENOENT') return emptyDb();
-    // Lieber abbrechen als eine kaputte Datei mit leerem Stand zu überschreiben
+    if(e.code === 'ENOENT') return emptyDb();   // erster Start
+    // Lieber nicht starten als eine kaputte Datei mit leerem Stand zu überschreiben
     console.error(`[rally] ${FILE} ist nicht lesbar – Server startet nicht.`, e.message);
     process.exit(1);
   }
@@ -59,9 +62,10 @@ let db = loadDb();
 
 function persist(){
   fs.mkdirSync(DATA_DIR, {recursive: true});
+  // erst in eine Hilfsdatei schreiben, dann austauschen: so gibt es nie eine halb geschriebene state.json
   const tmp = FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(db));
-  fs.renameSync(tmp, FILE);   // atomar: nie eine halb geschriebene Datei
+  fs.renameSync(tmp, FILE);
 }
 function bump(){ db.version++; persist(); }
 
