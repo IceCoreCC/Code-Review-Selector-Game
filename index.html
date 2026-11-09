@@ -1,0 +1,2232 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Review Rally</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --bg:#12241a;--panel:#1b3826;--panel2:#264a33;--ink:#eef7ea;--muted:#a9c4a4;
+  --accent:#ffd23f;--accent-dark:#b8901a;--orange:#ff8c1a;--good:#5be38a;--bad:#ff6b6b;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Fredoka,system-ui,sans-serif;
+  background:radial-gradient(circle at 15% -10%,#2f6a3a,transparent 55%),radial-gradient(circle at 100% 100%,#1a3a22,transparent 50%),var(--bg)}
+header{display:flex;align-items:center;gap:14px;padding:18px 24px;flex-wrap:wrap;max-width:1140px;margin:0 auto}
+h1{margin:0;font-size:30px;letter-spacing:.5px}
+h1 span{color:var(--accent)}
+h2{margin:0 0 12px;font-size:20px}
+nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+nav button.active{background:var(--accent);color:#3a2a00}
+main{max-width:1140px;margin:0 auto;padding:0 16px 60px}
+.card{background:var(--panel);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+.grid2{display:grid;grid-template-columns:1fr 1.2fr;gap:16px}
+@media (max-width:800px){.grid2{grid-template-columns:1fr}}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:8px 14px;background:var(--panel2);color:var(--ink);transition:transform .08s,filter .15s}
+button:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-1px)}
+button:active:not(:disabled){transform:translateY(2px)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#3a2a00;font-weight:600;box-shadow:0 4px 0 var(--accent-dark)}
+.btn-good{background:var(--good);color:#073b1a;font-weight:600}
+.btn-small{padding:4px 10px;font-size:14px;border-radius:9px}
+.btn-big{font-size:22px;padding:14px 30px;border-radius:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted);margin-bottom:10px;flex:1}
+input,select{font:inherit;color:var(--ink);background:#0e1d13;border:2px solid var(--panel2);border-radius:10px;padding:8px 10px;min-width:0}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.hint{color:var(--muted);font-size:14px}
+
+/* Starterfeld */
+.runner{display:flex;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+.runner:last-child{border-bottom:0}
+.ava{--c:#888;display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 35%, #fff), var(--c));box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+.ava img{width:100%;height:100%;object-fit:cover}
+.ava span{font-size:60%}
+.ava.mini{width:38px;height:38px;font-size:32px}
+.ava.big{width:130px;height:130px;font-size:100px;margin:0 auto;box-shadow:0 6px 0 rgba(0,0,0,.25), inset 0 -5px 0 rgba(0,0,0,.18)}
+.summary .ava{width:36px;height:36px}
+td .ava.mini{width:34px;height:34px}
+.runner .nm{width:110px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.runner .bar{flex:1;height:12px;background:#0e1d13;border-radius:6px;overflow:hidden;min-width:40px}
+.runner .bar i{display:block;height:100%;border-radius:6px}
+.runner .pc{width:46px;text-align:right;font-variant-numeric:tabular-nums}
+.runner.out{opacity:.45}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--panel2);color:var(--muted);white-space:nowrap}
+.startbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:6px 0 16px}
+
+/* 3D-Bühne */
+.stage{position:relative;height:460px;border-radius:18px;overflow:hidden;background:#9fd8ef;border:4px solid #7a5a32;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+.stage canvas{display:block;width:100%;height:100%}
+.stage.cinema{position:fixed;inset:0;height:auto;border:0;border-radius:0;z-index:40}
+.stage::before,.stage::after{content:"";position:absolute;left:0;right:0;height:0;background:#000;z-index:1;transition:height .6s ease;pointer-events:none}
+.stage::before{top:0}.stage::after{bottom:0}
+.stage.cinema::before,.stage.cinema::after{height:6vh}
+.hud{position:absolute;inset:0;pointer-events:none;z-index:2;font-weight:600}
+#ranking{position:absolute;top:calc(6vh + 14px);left:16px;margin:0;padding:10px 14px;list-style:none;background:rgba(10,30,34,.62);border-radius:14px;backdrop-filter:blur(4px);min-width:170px;display:none}
+.stage.cinema #ranking{display:block}
+#ranking li{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:17px}
+#ranking .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.stage .ticker{position:absolute;left:16px;bottom:14px;margin:0;padding:8px 14px;list-style:none;background:rgba(10,30,34,.62);border-radius:14px;backdrop-filter:blur(4px);max-width:min(560px,calc(100% - 32px))}
+.stage.cinema .ticker{bottom:calc(6vh + 14px)}
+.ticker li{padding:3px 0;font-size:18px;animation:pop .3s}
+.ticker li:not(:first-child){opacity:.55;font-size:15px}
+@keyframes pop{from{transform:translateX(-10px);opacity:0}}
+#countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:170px;font-weight:700;color:var(--accent);text-shadow:0 8px 0 rgba(0,0,0,.35),0 0 40px rgba(0,0,0,.3)}
+#countdown.go{animation:zoom .4s cubic-bezier(.2,1.6,.4,1)}
+#slowmo{position:absolute;top:calc(6vh + 14px);right:16px;padding:6px 14px;border-radius:10px;background:var(--bad);color:#fff;letter-spacing:3px;animation:blink .6s steps(2) infinite}
+@keyframes blink{50%{opacity:.4}}
+#hudTitle{position:absolute;top:calc(6vh + 14px);left:50%;transform:translateX(-50%);padding:6px 16px;border-radius:12px;background:rgba(10,30,34,.62);font-size:18px;white-space:nowrap;max-width:50vw;overflow:hidden;text-overflow:ellipsis;display:none}
+.stage.cinema #hudTitle{display:block}
+#skipBtn{position:absolute;right:16px;bottom:calc(6vh + 14px);pointer-events:auto;background:rgba(10,30,34,.62);backdrop-filter:blur(4px)}
+#heatCard{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;background:rgba(10,30,34,.45);animation:zoom .4s cubic-bezier(.2,1.6,.4,1)}
+#heatCard .h1{font-size:64px;font-weight:700;color:var(--accent);text-shadow:0 6px 0 rgba(0,0,0,.35)}
+#heatCard .h2{font-size:28px;max-width:80vw}
+#heatCard .h3{font-size:18px;color:var(--muted)}
+.pondItem{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--panel2);margin-bottom:8px}
+.pondItem .title{font-weight:600}
+.pondItem a{color:var(--accent)}
+.pondItem .meta{font-size:13px;color:var(--muted)}
+.pondItem .actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:14px}
+.picker button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px}
+.picker .ava.mini{width:56px;height:56px}
+.summary{text-align:left;margin-top:12px}
+.summary div{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--panel2)}
+.summary svg{width:36px;height:32px;flex:none}
+.no3d{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:#103;font-size:18px}
+
+/* Garderobe */
+.wardrobe{grid-template-columns:1.1fr 1fr}
+@media (max-width:800px){.wardrobe{grid-template-columns:1fr}}
+.wdstage{height:400px}
+.cat{margin:0 0 6px;font-size:16px}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-bottom:16px}
+.item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:2px solid transparent;font-size:28px;line-height:1.1}
+.item span{font-size:13px;font-weight:500}
+.item small{font-size:11px;color:var(--muted)}
+#meBtn:not([hidden]){display:inline-flex;align-items:center;gap:8px}
+#meBtn .ava.mini{width:26px;height:26px}
+#meBtn.mebtn{background:var(--panel2);border:2px solid var(--accent)}
+.item.animal img{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.08)}
+.item.sel{border-color:var(--accent);background:#2a5a3a}
+.item.locked{opacity:.55;filter:grayscale(.7)}
+.item.peek{border-color:var(--orange);border-style:dashed;opacity:1;filter:none}
+#wdInfo b{color:var(--accent)}
+
+/* Reviews */
+.pr{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--panel2);margin-bottom:10px}
+.pr .ava.mini{width:46px;height:46px}
+.pr a{color:var(--accent)}
+.pr .title{font-weight:600;font-size:17px}
+.pr .meta{font-size:14px;color:var(--muted);margin-top:2px}
+.pr .actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.pr.pirate{background:linear-gradient(90deg,#4a2a1d,var(--panel2))}
+.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:8px;background:#0e1d13;margin-right:4px}
+.bonus{color:var(--good)} .bounty{color:var(--orange)}
+@media (max-width:640px){.pr{grid-template-columns:auto 1fr}.pr .actions{grid-column:1/-1;justify-content:flex-start}}
+
+/* Bestenliste */
+.lb{display:flex;align-items:center;gap:14px;padding:12px;border-radius:14px;background:var(--panel2);margin-bottom:10px}
+.lb .rank{font-size:28px;width:42px;text-align:center}
+.lb .ava.mini{width:54px;height:54px}
+.lb .info{flex:1;min-width:0}
+.lb .xp{font-size:24px;font-weight:700;color:var(--accent);text-align:right}
+.lvlbar{height:8px;border-radius:4px;background:#0e1d13;overflow:hidden;margin-top:6px;max-width:260px}
+.lvlbar i{display:block;height:100%;background:var(--accent)}
+.stats{font-size:14px;color:var(--muted)}
+
+/* Team */
+table{width:100%;border-collapse:collapse}
+td,th{padding:6px;text-align:left}
+th{font-size:13px;color:var(--muted);font-weight:500}
+td input[type=color]{width:42px;height:36px;padding:2px}
+td input[type=number]{width:80px}
+.tablewrap{overflow-x:auto}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(5,20,22,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay[hidden]{display:none}
+.modal{background:var(--panel);border-radius:22px;padding:26px;max-width:460px;width:100%;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.3);animation:zoom .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes zoom{from{transform:scale(.6);opacity:0}}
+
+.modal h3{font-size:28px;margin:8px 0}
+.modal .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.breakdown{text-align:left;background:#0e1d13;border-radius:12px;padding:10px 14px;margin-top:12px}
+.breakdown div{display:flex;justify-content:space-between}
+.breakdown .sum{border-top:1px solid var(--panel2);margin-top:6px;padding-top:6px;font-weight:700;color:var(--accent)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:#3a2a00;padding:12px 20px;border-radius:14px;font-weight:600;z-index:70;box-shadow:0 5px 0 var(--accent-dark);max-width:calc(100% - 32px);text-align:center}
+#toast[hidden]{display:none}
+.empty{text-align:center;padding:30px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌲 Review <span>Rally</span></h1>
+  <nav>
+    <button data-act="tab" data-id="race" class="active">🏁 Rennen</button>
+    <button data-act="tab" data-id="reviews">📋 Offene Reviews <span id="openCount"></span></button>
+    <button data-act="tab" data-id="board">🏆 Bestenliste</button>
+    <button data-act="tab" data-id="wardrobe">🎩 Garderobe</button>
+    <button data-act="tab" data-id="team">👥 Team</button>
+    <button data-act="profile" id="meBtn" hidden>👤 Anmelden</button>
+    <button data-act="sound" id="soundBtn" title="Ton an/aus">🔊</button>
+  </nav>
+</header>
+
+<main>
+  <!-- RENNEN -->
+  <section id="tab-race">
+    <div class="grid2">
+      <div class="card">
+        <h2>📝 Neuer Pull Request</h2>
+        <label>Titel<input id="prTitle" placeholder="z. B. #482 Login-Timeout fixen"></label>
+        <label>Link (optional)<input id="prUrl" placeholder="https://github.eure-firma.de/…/pull/482"></label>
+        <div class="row">
+          <label>Autor:in (reviewt nicht selbst)<select id="prAuthor"></select></label>
+          <label>Größe<select id="prSize"></select></label>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <button class="btn-primary" data-act="toPond">🍂 Ab auf den Laubhaufen</button>
+          <button data-act="instant" title="Für Dringendes: sofort auslosen, ohne aufs Daily zu warten">🎲 Jetzt auslosen</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🍂 Laubhaufen <span class="hint">– wartet aufs Daily Derby</span></h2>
+        <p class="hint" style="margin-top:-6px">Wer einen PR vorher freiwillig nimmt, bekommt einen 🙋-Bonus. Der wächst, je länger der PR schon auf dem Laubhaufen liegt.</p>
+        <div id="pond"></div>
+      </div>
+    </div>
+    <div class="startbar">
+      <button class="btn-primary btn-big" id="derbyBtn" data-act="derby">🏁 Daily Derby starten</button>
+      <span class="hint" id="derbyHint"></span>
+    </div>
+    <div class="stage" id="stage">
+      <div class="hud">
+        <div id="hudTitle"></div>
+        <button id="skipBtn" data-act="skip" hidden>⏩ Überspringen</button>
+        <ol id="ranking"></ol>
+        <div id="slowmo" hidden>ZEITLUPE</div>
+        <ul class="ticker" id="ticker"><li>Alle warten an der Startlinie …</li></ul>
+        <div id="countdown"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>🐾 Starterfeld <span class="hint">– aktuelle Gewinnchancen</span></h2>
+      <div id="field"></div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section id="tab-reviews" hidden>
+    <div class="card">
+      <h2>📋 Offene Reviews</h2>
+      <p class="hint" style="margin-top:-6px">⚡ Unter 4 Std erledigt: +15 XP · unter 24 Std: +5 XP · Nach 24 Std gibt es 🏴‍☠️ <b>Kopfgeld</b>: Jede:r darf den PR kapern, und das Kopfgeld wächst weiter.</p>
+      <div id="openList"></div>
+    </div>
+    <div class="card">
+      <h2>✅ Zuletzt erledigt</h2>
+      <div id="doneList"></div>
+    </div>
+  </section>
+
+  <!-- BESTENLISTE -->
+  <section id="tab-board" hidden>
+    <div class="card">
+      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:10px">
+        <h2 style="margin:0" id="seasonTitle"></h2>
+        <button data-act="newSeason">🌅 Neue Season starten</button>
+      </div>
+      <div id="board"></div>
+      <p class="hint">🃏 Joker: Alle 5 Reviews gibt es einen (max. 3). Wer ein Rennen gewinnt und das Review gerade nicht übernehmen kann, setzt einen Joker ein. Dann läuft das Rennen ohne einen nochmal.</p>
+    </div>
+  </section>
+
+  <!-- GARDEROBE -->
+  <section id="tab-wardrobe" hidden>
+    <div class="grid2 wardrobe">
+      <div class="card">
+        <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h2 style="margin:0">🎩 Garderobe</h2>
+          <select id="wdMember" style="min-width:160px"></select>
+        </div>
+        <div class="stage wdstage" id="wdStage"></div>
+        <div class="row" style="margin-top:12px;align-items:center">
+          <button class="btn-primary" data-act="danceTest">💃 Siegestanz testen</button>
+          <span id="wdInfo" class="hint"></span>
+        </div>
+      </div>
+      <div class="card" id="wdItems"></div>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section id="tab-team" hidden>
+    <div class="card">
+      <h2>👥 Team</h2>
+      <p class="hint" style="margin-top:-6px">Die Arbeitszeit fließt in die Chancen ein: 50 % bedeutet halb so viele Reviews. Wer gerade viel reviewt hat oder offene Reviews hat, bekommt niedrigere Chancen.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th></th><th>Name</th><th>Arbeitszeit %</th><th>🏖️ Abwesend</th><th>🃏</th><th></th></tr></thead>
+        <tbody id="teamBody"></tbody>
+      </table></div>
+      <div class="row" style="margin-top:12px">
+        <button data-act="addMember" id="addMemberBtn">➕ Tier hinzufügen</button>
+        <span class="hint" id="joinHint" hidden>Neue Leute legen sich selbst über <b>👤</b> oben rechts an.</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>💾 Daten</h2>
+      <p class="hint" style="margin-top:-6px" id="dataHint">Alles wird lokal in diesem Browser gespeichert. Mit Export/Import könnt ihr die Daten sichern oder umziehen.</p>
+      <div class="row">
+        <button data-act="export">⬇️ Export (JSON)</button>
+        <button data-act="import" id="importBtn">⬆️ Import</button>
+        <button data-act="resetAll" id="resetBtn" style="background:#5a2323">🧨 Alles zurücksetzen</button>
+        <button data-act="serverImport" id="serverImportBtn" hidden>📦 Daten aus diesem Browser auf den Server übernehmen</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="overlay" id="overlay" hidden><div class="modal" id="modal"></div></div>
+<canvas id="confetti"></canvas>
+<div id="toast" hidden></div>
+
+<script>
+const STORE = 'duckderby.v1';
+const HOUR = 36e5, DAY = 864e5;
+const SIZES = { S:{name:'S · Kleinkram',xp:10}, M:{name:'M · Normal',xp:20}, L:{name:'L · Brocken',xp:35}, XL:{name:'XL · Monster',xp:50} };
+const COLORS = ['#ffd23f','#ff7aa2','#7ae0ff','#b19cff','#7dff9b','#ffa94d','#ff6b6b','#f0f0f0'];
+const TITLES = [[1,'Jungtier'],[3,'Waldläufer:in'],[5,'Pfadfinder:in'],[8,'Fährtenleser:in'],[12,'Rudelführer:in'],[16,'Legende des Waldes']];
+
+/* Tiere: cls = Bewegungsart (quad = läuft, bird = fliegt, fish = rollendes Glas, duck = watschelt) */
+const ANIMALS = {
+  redpanda: {name:'Roter Panda', emoji:'🦊', ui:'#d9572b', cls:'quad'},
+  raccoon:  {name:'Waschbär',    emoji:'🦝', ui:'#8a9099', cls:'quad'},
+  molerat:  {name:'Nacktmull',   emoji:'🐀', ui:'#f0aea4', cls:'quad'},
+  monkey:   {name:'Affe',        emoji:'🐒', ui:'#9a6a3f', cls:'quad'},
+  capybara: {name:'Capybara',    emoji:'🦫', ui:'#b07a4a', cls:'quad'},
+  eagle:    {name:'Adler',       emoji:'🦅', ui:'#7a5434', cls:'bird'},
+  falcon:   {name:'Falke',       emoji:'🦅', ui:'#5d7187', cls:'bird'},
+  salmon:   {name:'Lachs',       emoji:'🐟', ui:'#e9876b', cls:'fish'},
+  goldfish: {name:'Goldfisch',   emoji:'🐠', ui:'#ff8a2a', cls:'fish'},
+  duck:     {name:'Gummiente (Retro)', emoji:'🦆', ui:'#ffd23f', cls:'duck'}
+};
+const DEFAULT_ANIMAL = 'capybara';
+const animalOf = m => ANIMALS[m && m.animal] ? m.animal : DEFAULT_ANIMAL;
+const uiColor = m => ANIMALS[animalOf(m)].ui;
+const clsOf = m => ANIMALS[animalOf(m)].cls;
+
+/* Hindernisse passend zur Bewegungsart. {n} = Name, {g} = Genitiv */
+const OBST = {
+  quad: [['mud','🟤 {n} steckt im Matsch fest!'],['log','🪵 Ein Baum kippt vor {n} um!'],['hedgehog','🦔 Ein Igel kreuzt den Weg von {n}!'],
+         ['mushroom','🍄 {n} hüpft auf einem Riesenpilz herum!'],['bush','🌿 {n} verheddert sich im Brombeerbusch!']],
+  bird: [['web','🕸️ {n} fliegt in ein Spinnennetz!'],['branch','🌳 {n} knallt gegen einen Ast!'],['pinecone','🌰 Ein Tannenzapfen trifft {n} am Kopf!'],['wind','🌬️ {n} kämpft gegen eine Windböe!']],
+  fish: [['root','🌱 {g} Glas eiert über eine Wurzel!'],['mud','🟤 {g} Glas steckt im Matsch!'],['rock','🪨 {g} Glas prallt gegen einen Stein!'],['hedgehog','🦔 Ein Igel blockiert {g} Glas!']]
+};
+OBST.duck = OBST.quad;
+const gen = n => /[sßxz]$/i.test(n) ? n + '’' : n + 's';
+const obstText = (t, n) => t.replace('{n}', n).replace('{g}', gen(n));
+const BOOSTS = ['💨 {n} zündet den Turbo!','🏃 {n} legt einen Sprint hin!','⚡ {n} hat plötzlich Rückenwind!','🔥 {n} gibt alles!'];
+const LEADS = ['🔥 {n} übernimmt die Führung!','💨 {n} zieht vorbei!','😮 {n} jetzt vorne!','🚀 {n} prescht an die Spitze!','👀 {n} wittert die Chance!'];
+
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2,10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => /^https?:\/\//i.test(u||'') ? u : '';
+const pick = a => a[Math.random()*a.length|0];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function mulberry32(a){ return () => { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+/* ---------- State ---------- */
+const ANIMAL_ORDER = ['redpanda','raccoon','molerat','salmon','eagle','monkey','capybara','falcon','goldfish'];
+function newMember(name, pct, i){
+  return {id:uid(),name,animal:ANIMAL_ORDER[i%ANIMAL_ORDER.length],pct,away:false,seasonXp:0,totalXp:0,seasonReviews:0,totalReviews:0,jokers:1,kudos:0,history:[]};
+}
+function defaultState(){
+  const names = [['Anna',100],['Ben',100],['Chris',100],['Dana',50],['Emil',80],['Fiona',60]];
+  return {members:names.map(([n,p],i)=>newMember(n,p,i)), prs:[], seasonNo:1, seasonStart:Date.now(), sound:true};
+}
+function migrate(s){
+  (s.members||[]).forEach((m,i) => { if(!ANIMALS[m.animal]) m.animal = ANIMAL_ORDER[i % ANIMAL_ORDER.length]; delete m.color; });
+  return s;
+}
+function load(){ try{ const r = localStorage.getItem(STORE); if(r) return migrate(JSON.parse(r)); }catch(e){} return defaultState(); }
+let S = load();
+const M = id => S.members.find(m => m.id === id);
+
+/* ---------- Level / Fairness ---------- */
+const level = xp => Math.floor(Math.sqrt(xp/20)) + 1;
+const xpFor = lvl => 20*(lvl-1)**2;
+const titleOf = lvl => TITLES.filter(t => lvl >= t[0]).pop()[1];
+
+/* ---------- Freischaltbares: [id, Name, Icon, ab Level] ---------- */
+const UNLOCKS = {
+  hat:   [['none','Kein Hut','🚫',1],['party','Partyhut','🥳',2],['cap','Basecap','🧢',3],['headphones','Kopfhörer','🎧',4],['pirate','Piratenhut','🏴‍☠️',5],
+          ['viking','Wikingerhelm','⚔️',7],['tophat','Zylinder','🎩',9],['crown','Krone','👑',12],['halo','Heiligenschein','😇',16]],
+  trail: [['splash','Staubwolke','💨',1],['bubbles','Seifenblasen','🫧',3],['rainbow','Regenbogen','🌈',6],['sparkle','Glitzer','✨',8],['fire','Feuerspur','🔥',11]],
+  dance: [['hop','Freudensprung','🦘',1],['spin','Pirouette','🌀',4],['flip','Salto','🤸',6],['moonwalk','Moonwalk','🕺',11],['rocket','Raketenstart','🚀',14]],
+  skin:  [['normal','Normal','🎨',1],['gold','Gold','🥇',10],['chrome','Chrom','🪩',13],['rainbow','Regenbogen','🦄',16]]
+};
+const CAT_NAMES = {hat:'🎩 Hüte', trail:'💨 Spur beim Laufen', dance:'💃 Siegestanz', skin:'✨ Fell / Look'};
+const itemOf = (cat, id) => UNLOCKS[cat].find(i => i[0] === id);
+function lookOf(m){
+  const lv = level(m.totalXp||0), out = {};
+  for(const cat in UNLOCKS){
+    const it = itemOf(cat, m.look && m.look[cat]);
+    out[cat] = it && it[3] <= lv ? it[0] : UNLOCKS[cat][0][0];
+  }
+  return out;
+}
+function unlocksBetween(fromLvl, toLvl){
+  const res = [];
+  for(const cat in UNLOCKS) UNLOCKS[cat].forEach(it => { if(it[3] > fromLvl && it[3] <= toLvl) res.push(it); });
+  return res;
+}
+const hatIcon = m => { const h = lookOf(m).hat; return h === 'none' ? '' : ' ' + itemOf('hat', h)[2]; };
+
+function openLoad(m){ return S.prs.filter(p => p.status==='open' && p.reviewer===m.id).length; }
+function weightOf(m){
+  const f = Math.max(m.pct,10)/100;
+  const recent = m.history.filter(t => Date.now()-t < 14*DAY).length;
+  return f / (1 + recent/(f*3)) / (1 + openLoad(m)*0.75);
+}
+function eligible(authorId, excluded=[]){
+  return S.members.filter(m => !m.away && m.id !== authorId && !excluded.includes(m.id));
+}
+function weightedPick(list){
+  const ws = list.map(weightOf), sum = ws.reduce((a,b)=>a+b,0);
+  let r = Math.random()*sum;
+  for(let i=0;i<list.length;i++){ r -= ws[i]; if(r <= 0) return list[i]; }
+  return list[list.length-1];
+}
+
+/* ---------- Avatar (3D-Porträt mit Hut, sonst Emoji) ---------- */
+function avatar(m, cls='mini'){
+  const a = animalOf(m), c = ANIMALS[a].ui;
+  const url = HAS3D && m ? R3.portrait(a, lookOf(m)) : null;
+  return `<span class="ava ${cls}" style="--c:${c}">${url ? `<img src="${url}" alt="">` : `<span>${ANIMALS[a].emoji}</span>`}</span>`;
+}
+
+/* =====================================================================
+   3D-WELT: Waldlauf
+   ===================================================================== */
+const R3 = (() => {
+  if(!window.THREE) return null;
+  const TAU = Math.PI*2, L = 120, LANE = 3.4;
+  let renderer, scene, camera, sun, world, dyn, nLanes = 0, W = 0, time = 0, ENV = null, ps = null;
+  let mode = 'idle', fieldKey = '', race = null, celebrateId = null, introT = 0, celebrateT = 0;
+  const runners = new Map(); let obstacles = [], spectators = [], clouds = [], confetti3 = [], leaves = [];
+  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(); let camCut = true, shake = 0;
+
+  const std = (c, o={}) => new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.6, flatShading:true}, o));
+  const metal = (c, env, r=.3) => new THREE.MeshStandardMaterial({color:c, metalness:1, roughness:r, envMap:env, flatShading:true});
+  const G = {
+    sph:new THREE.SphereGeometry(1,16,12), cyl:new THREE.CylinderGeometry(1,1,1,8), cone6:new THREE.ConeGeometry(1,1,7), box:new THREE.BoxGeometry(1,1,1),
+    torus:new THREE.TorusGeometry(1,0.1,6,20), particle:new THREE.SphereGeometry(0.12,6,5), confetti:new THREE.PlaneGeometry(0.22,0.36),
+    leaf:new THREE.PlaneGeometry(0.24,0.16), trunk:new THREE.CylinderGeometry(0.2,0.3,1,6), cone:new THREE.ConeGeometry(1,1.8,7),
+    ico:new THREE.IcosahedronGeometry(1,0), rock:new THREE.DodecahedronGeometry(1,0), flower:new THREE.SphereGeometry(0.12,6,4),
+    post:new THREE.CylinderGeometry(0.25,0.3,5.2,8),
+    // Ente (Retro)
+    dBody:new THREE.SphereGeometry(0.7,14,10), dHead:new THREE.SphereGeometry(0.42,12,10), dBeak:new THREE.ConeGeometry(0.17,0.5,8),
+    dTail:new THREE.ConeGeometry(0.25,0.6,6), dWing:new THREE.SphereGeometry(0.4,10,8)
+  };
+  const MAT = {
+    beak:std('#ff8c1a',{roughness:.4}), eye:std('#151515',{roughness:.2}), white:std('#ffffff',{roughness:.3}), nose:std('#1b1b1b',{roughness:.3}),
+    trunk:std('#7a5230'), rock:std('#8d969b'), grass:std('#6cbf4a'), wood:std('#8b5a2b'), stump:std('#c9a26b'),
+    leaves:['#3f9a3a','#57b347','#2f7d3a','#7cc254','#d9822b','#e3b13a'].map(c=>std(c)), fern:std('#3d8f3a'),
+    post:std('#8b5a2b'), chalk:std('#f4f1e6',{roughness:1}), cloud:std('#ffffff',{roughness:1}),
+    flowers:['#ff7aa2','#ffd23f','#ffffff','#b19cff'].map(c=>std(c)), capRed:std('#d93a2b'), stem:std('#f2ead8'),
+    confetti:COLORS.map(c=>new THREE.MeshBasicMaterial({color:c, side:THREE.DoubleSide})),
+    leafFall:['#d9822b','#e3b13a','#c4532c','#9bbf3a'].map(c=>new THREE.MeshStandardMaterial({color:c, side:THREE.DoubleSide, roughness:.8}))
+  };
+  const mesh = (g, m, shadow=true) => { const x = new THREE.Mesh(g, m); x.castShadow = shadow; x.receiveShadow = true; return x; };
+  const V = (x,y,z) => new THREE.Vector3(x,y,z);
+  const R = Math.random;
+  const easeOut = s => 1 - Math.pow(1 - s, 3);
+  const elastic = s => s >= 1 ? 1 : 1 - Math.pow(2, -9*s) * Math.cos(s*9);
+
+  function canvasTex(w, h, draw){ const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return new THREE.CanvasTexture(c); }
+  function rrect(x, l, t, w, h, r){ x.beginPath(); x.moveTo(l+r,t); x.arcTo(l+w,t,l+w,t+h,r); x.arcTo(l+w,t+h,l,t+h,r); x.arcTo(l,t+h,l,t,r); x.arcTo(l,t,l+w,t,r); x.closePath(); }
+
+  function makeEnv(rend){
+    const pm = new THREE.PMREMGenerator(rend), s = new THREE.Scene();
+    const tex = canvasTex(512, 256, (x, w, h) => {
+      const g = x.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#4aa8e0'); g.addColorStop(0.45,'#dff4ff'); g.addColorStop(0.55,'#7cc254'); g.addColorStop(1,'#2f6d2a');
+      x.fillStyle = g; x.fillRect(0,0,w,h);
+      const s2 = x.createRadialGradient(w*0.3,h*0.2,2,w*0.3,h*0.2,60); s2.addColorStop(0,'#fff'); s2.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle = s2; x.fillRect(0,0,w,h);
+    });
+    s.add(new THREE.Mesh(new THREE.SphereGeometry(50,32,16), new THREE.MeshBasicMaterial({map:tex, side:THREE.BackSide})));
+    const env = pm.fromScene(s, 0.02).texture; pm.dispose(); return env;
+  }
+
+  function makeLabel(text, color){
+    const tex = canvasTex(512, 128, (x) => {
+      x.font = '600 58px Fredoka, system-ui, sans-serif';
+      const w = Math.min(500, x.measureText(text).width + 110), l = (512-w)/2;
+      rrect(x, l, 14, w, 100, 50); x.fillStyle = 'rgba(10,30,34,.8)'; x.fill();
+      x.fillStyle = color; x.beginPath(); x.arc(l+52, 64, 20, 0, TAU); x.fill();
+      x.fillStyle = '#fff'; x.textBaseline = 'middle'; x.fillText(text, l+86, 68, 500-110);
+    });
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthWrite:false}));
+    s.scale.set(3.2, 0.8, 1); return s;
+  }
+
+  /* ---------- Hüte (relativ zur Kopfmitte, Kopfradius 0.42) ---------- */
+  const HATS = {
+    party(){
+      const g = new THREE.Group();
+      const c = mesh(new THREE.ConeGeometry(0.24,0.62,14), std('#ff5fa2')); c.position.y = 0.66; g.add(c);
+      for(const [y,r] of [[0.5,0.182],[0.7,0.105]]){ const ring = mesh(new THREE.TorusGeometry(r,0.028,6,16), std('#ffe14d')); ring.rotation.x = Math.PI/2; ring.position.y = y; g.add(ring); }
+      const b = mesh(new THREE.SphereGeometry(0.09,8,6), std('#7ae0ff')); b.position.y = 1.0; g.add(b);
+      g.rotation.z = 0.2; return g;
+    },
+    cap(){
+      const g = new THREE.Group(), red = std('#e63946');
+      const dome = mesh(new THREE.SphereGeometry(0.45,14,8,0,TAU,0,Math.PI/2), red); dome.scale.y = 0.75; dome.position.y = 0.05; g.add(dome);
+      const brim = mesh(new THREE.CylinderGeometry(0.28,0.28,0.04,14), std('#b5222e')); brim.scale.x = 1.35; brim.position.set(-0.45,0.1,0); g.add(brim);
+      const btn = mesh(new THREE.SphereGeometry(0.06,6,4), std('#ffffff')); btn.position.y = 0.39; g.add(btn);
+      return g;
+    },
+    headphones(){
+      const g = new THREE.Group(), dark = std('#2a2a2a',{roughness:.3});
+      const band = mesh(new THREE.TorusGeometry(0.47,0.045,8,24,Math.PI), dark); band.rotation.y = Math.PI/2; g.add(band);
+      for(const s of [-1,1]){
+        const cup = mesh(new THREE.CylinderGeometry(0.17,0.17,0.13,16), dark); cup.rotation.x = Math.PI/2; cup.position.z = s*0.46; g.add(cup);
+        const glow = new THREE.Mesh(new THREE.TorusGeometry(0.11,0.03,6,16), std('#7ae0ff',{emissive:'#2fa8d8', emissiveIntensity:1})); glow.position.z = s*0.53; g.add(glow);
+      }
+      return g;
+    },
+    pirate(){
+      const g = new THREE.Group(), black = std('#1d1d1d');
+      const brim = mesh(new THREE.CylinderGeometry(0.6,0.6,0.07,3), black); brim.position.y = 0.36; brim.rotation.y = Math.PI; g.add(brim);
+      const top = mesh(new THREE.CylinderGeometry(0.3,0.37,0.3,10), black); top.position.y = 0.52; g.add(top);
+      const skull = mesh(new THREE.SphereGeometry(0.075,8,6), std('#ffffff')); skull.position.set(0.32,0.54,0); g.add(skull);
+      return g;
+    },
+    viking(env){
+      const g = new THREE.Group();
+      const helm = mesh(new THREE.SphereGeometry(0.46,14,8,0,TAU,0,Math.PI/2), metal('#b9c3ca', env, .35)); helm.position.y = 0.05; g.add(helm);
+      const band = mesh(new THREE.TorusGeometry(0.46,0.05,6,24), metal('#c8913f', env, .3)); band.rotation.x = Math.PI/2; band.position.y = 0.06; g.add(band);
+      for(const s of [-1,1]){ const h = mesh(new THREE.ConeGeometry(0.09,0.55,8), std('#f3ead2')); h.position.set(0,0.32,s*0.46); h.rotation.x = s*0.9; g.add(h); }
+      return g;
+    },
+    tophat(){
+      const g = new THREE.Group(), black = std('#1a1a1a',{roughness:.4});
+      const brim = mesh(new THREE.CylinderGeometry(0.48,0.48,0.04,18), black); brim.position.y = 0.38; g.add(brim);
+      const body = mesh(new THREE.CylinderGeometry(0.29,0.29,0.6,18), black); body.position.y = 0.7; g.add(body);
+      const band = mesh(new THREE.CylinderGeometry(0.296,0.296,0.1,18), std('#e63946')); band.position.y = 0.46; g.add(band);
+      g.rotation.z = 0.12; return g;
+    },
+    crown(env){
+      const g = new THREE.Group(), gold = metal('#ffc93c', env, .2); gold.side = THREE.DoubleSide;
+      const ring = mesh(new THREE.CylinderGeometry(0.33,0.3,0.24,10,1,true), gold); ring.position.y = 0.5; g.add(ring);
+      for(let i=0;i<8;i++){ const a = i/8*TAU, sp = mesh(new THREE.ConeGeometry(0.07,0.2,6), gold); sp.position.set(Math.cos(a)*0.32,0.71,Math.sin(a)*0.32); g.add(sp); }
+      for(let i=0;i<4;i++){ const a = i/4*TAU, gem = mesh(new THREE.SphereGeometry(0.05,6,4), std('#e63946',{emissive:'#7a0010'})); gem.position.set(Math.cos(a)*0.335,0.5,Math.sin(a)*0.335); g.add(gem); }
+      return g;
+    },
+    halo(){
+      const g = new THREE.Group();
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.36,0.05,8,28), std('#ffe066',{emissive:'#ffcc00', emissiveIntensity:.9})); ring.rotation.x = Math.PI/2; ring.position.y = 0.8; g.add(ring);
+      g.userData.anim = t => { ring.position.y = 0.8 + Math.sin(t*2)*0.06; ring.rotation.z = t; };
+      return g;
+    }
+  };
+
+  /* =================== TIER-BAUKASTEN =================== */
+  const QUAD = {
+    redpanda:{bl:1.5,bh:.72,bw:.72,leg:.45,headR:.43,main:'#c4532c',belly:'#2b1a12',legC:'#2b1a12',snoutC:'#f4efe6',snoutL:.18,snoutR:.18,
+      ears:{type:'pointy',c:'#c4532c',inner:'#f4efe6'},tail:{type:'bushy',n:7,r:.21,c:'#c4532c',ring:'#e8a066'},cheeks:'#f4efe6'},
+    raccoon:{bl:1.5,bh:.75,bw:.75,leg:.42,headR:.42,main:'#8a9099',belly:'#c3c7cd',legC:'#3a3a3a',snoutC:'#ececec',snoutL:.24,snoutR:.15,
+      ears:{type:'pointy',c:'#8a9099',inner:'#eeeeee'},tail:{type:'bushy',n:7,r:.2,c:'#8a9099',ring:'#2b2b2b'},mask:'#222222',brows:'#f2f2f2'},
+    molerat:{bl:1.75,bh:.58,bw:.58,leg:.28,headR:.36,main:'#f0aea4',belly:'#f6c6be',legC:'#e99d93',snoutC:'#f6c0b8',snoutL:.16,snoutR:.2,
+      ears:{type:'tiny',c:'#e99d93'},tail:{type:'thin',c:'#e99d93'},teeth:true,wrinkles:'#e2968c',eyeS:.45},
+    monkey:{bl:1.3,bh:.75,bw:.7,leg:.55,headR:.45,main:'#7a5230',belly:'#c9a27a',legC:'#6a4526',snoutC:'#e8c9a0',snoutL:.1,snoutR:.22,
+      ears:{type:'side',c:'#e8c9a0'},tail:{type:'curl',c:'#7a5230'},face:'#e8c9a0'},
+    capybara:{bl:1.65,bh:.9,bw:.85,leg:.36,headR:.42,main:'#a8754a',belly:'#bb8a5e',legC:'#7a5232',snoutC:'#8a5d38',snoutL:.3,snoutR:.24,
+      ears:{type:'round',c:'#7a5232'},tail:{type:'none'},orange:true,eyeS:.8}
+  };
+  const BIRD = {
+    eagle:{body:'#5a3b22', belly:'#4d321c', head:'#f4f1e8', beak:'#f2c230', tail:'#f4f1e8', wing:'#4a3019', tip:'#2a1a0c', feet:'#f2c230', iris:'#f2c230', brow:'#3a2614'},
+    falcon:{body:'#5d7187', belly:'#efe5cf', head:'#4b5d70', cheek:'#efe5cf', stache:'#2a3440', beak:'#3d3d3d', tail:'#5d7187', wing:'#52657a', tip:'#2c3744', feet:'#f2c230', iris:'#2a2a2a', brow:'#2a3440'}
+  };
+  const FISH = {
+    salmon:{main:'#e9876b', back:'#6e8796', belly:'#f6c8b6', fin:'#d06a55'},
+    goldfish:{main:'#ff8a2a', back:'#ff6a1a', belly:'#ffc070', fin:'#ff7a20'}
+  };
+
+  function buildQuad(sp, F, hasHat){
+    const rig = new THREE.Group(), body = new THREE.Group(); rig.add(body);
+    const hip = sp.leg, by = hip + sp.bh*0.35, hr = sp.headR, ek = hr/0.42;
+    const torso = mesh(G.sph, F(sp.main)); torso.scale.set(sp.bl/2, sp.bh/2, sp.bw/2); torso.position.y = by; body.add(torso);
+    const belly = mesh(G.sph, F(sp.belly)); belly.scale.set(sp.bl*0.38, sp.bh*0.32, sp.bw*0.4); belly.position.set(0.05, by - sp.bh*0.17, 0); body.add(belly);
+    if(sp.wrinkles) for(let i=-2;i<=2;i++){
+      const xx = i*sp.bl*0.15, f = Math.sqrt(1 - Math.pow(xx/(sp.bl/2), 2));
+      const r = mesh(G.torus, F(sp.wrinkles)); r.rotation.y = Math.PI/2; r.scale.set(sp.bw/2*f*1.02, sp.bh/2*f*1.02, 0.5); r.position.set(xx, by, 0); body.add(r);
+    }
+    // Kopf
+    const head = new THREE.Group(); head.position.set(sp.bl*0.48 + hr*0.35, by + sp.bh*0.38, 0); body.add(head);
+    const skull = mesh(G.sph, F(sp.main)); skull.scale.setScalar(hr); head.add(skull);
+    if(sp.face){ const f = mesh(G.sph, F(sp.face)); f.scale.set(hr*0.45, hr*0.78, hr*0.82); f.position.x = hr*0.58; head.add(f); }
+    const sn = mesh(G.sph, F(sp.snoutC)); sn.scale.set(sp.snoutL + hr*0.25, sp.snoutR*0.8, sp.snoutR); sn.position.set(hr*0.72, -hr*0.25, 0); head.add(sn);
+    const noseX = hr*0.72 + sp.snoutL + hr*0.22;
+    const nose = mesh(G.sph, MAT.nose); nose.scale.setScalar(0.065*ek); nose.position.set(noseX, -hr*0.16, 0); head.add(nose);
+    const es = sp.eyeS || 1;
+    for(const s of [-1,1]){
+      if(sp.mask){ const mk = mesh(G.sph, F(sp.mask)); mk.scale.set(hr*0.2, hr*0.24, hr*0.36); mk.position.set(hr*0.72, hr*0.16, s*hr*0.36); mk.rotation.y = -s*0.4; head.add(mk); }
+      if(sp.brows){ const b = mesh(G.sph, F(sp.brows)); b.scale.set(hr*0.18, hr*0.1, hr*0.28); b.position.set(hr*0.7, hr*0.47, s*hr*0.3); head.add(b); }
+      if(sp.cheeks){
+        const c = mesh(G.sph, F(sp.cheeks)); c.scale.set(hr*0.25, hr*0.28, hr*0.3); c.position.set(hr*0.6, -hr*0.12, s*hr*0.55); head.add(c);
+        const br = mesh(G.sph, F(sp.cheeks)); br.scale.set(hr*0.12, hr*0.1, hr*0.14); br.position.set(hr*0.8, hr*0.48, s*hr*0.28); head.add(br);
+      }
+      const eye = mesh(G.sph, MAT.eye, false); eye.scale.setScalar(0.075*es*ek); eye.position.set(hr*0.84, hr*0.18, s*hr*0.36); head.add(eye);
+      const gl = mesh(G.sph, MAT.white, false); gl.scale.setScalar(0.025*Math.max(es,.6)*ek); gl.position.set(hr*0.84 + 0.055*es*ek, hr*0.22, s*hr*0.36); head.add(gl);
+      // Ohren
+      const et = sp.ears.type;
+      if(et === 'pointy'){
+        const e = mesh(G.cone6, F(sp.ears.c)); e.scale.set(0.14*ek, 0.3*ek, 0.14*ek); e.position.set(-hr*0.05, hr*0.95, s*hr*0.5); e.rotation.x = s*0.35; head.add(e);
+        if(sp.ears.inner){ const i2 = mesh(G.cone6, F(sp.ears.inner)); i2.scale.set(0.07*ek, 0.2*ek, 0.07*ek); i2.position.set(-hr*0.05 + 0.07*ek, hr*0.9, s*hr*0.48); i2.rotation.x = s*0.35; head.add(i2); }
+      } else if(et === 'round'){
+        const e = mesh(G.sph, F(sp.ears.c)); e.scale.set(0.07*ek, 0.13*ek, 0.13*ek); e.position.set(-hr*0.15, hr*0.85, s*hr*0.55); head.add(e);
+      } else if(et === 'side'){
+        const e = mesh(G.sph, F(sp.ears.c)); e.scale.set(0.06*ek, 0.17*ek, 0.17*ek); e.position.set(0, hr*0.1, s*hr*1.0); head.add(e);
+      } else if(et === 'tiny'){
+        const e = mesh(G.sph, F(sp.ears.c)); e.scale.setScalar(0.045*ek); e.position.set(-hr*0.15, hr*0.55, s*hr*0.75); head.add(e);
+      }
+      if(sp.teeth){ const t = mesh(G.box, MAT.white); t.scale.set(0.05, 0.14, 0.06); t.position.set(noseX - 0.05, -hr*0.55, s*0.036); head.add(t); }
+    }
+    let orange = null;
+    if(sp.orange && !hasHat){
+      orange = new THREE.Group(); orange.position.y = hr + 0.08; head.add(orange);
+      const o = mesh(G.sph, std('#ff9a1a',{roughness:.5})); o.scale.set(0.15,0.13,0.15); orange.add(o);
+      const lf = mesh(G.sph, std('#3f9a3a')); lf.scale.set(0.08,0.02,0.04); lf.position.set(0.03,0.13,0.03); lf.rotation.z = 0.5; orange.add(lf);
+    }
+    // Beine
+    const legs = [], lx = sp.bl*0.3, lz = sp.bw*0.3;
+    for(const [x, z] of [[lx,lz],[lx,-lz],[-lx,lz],[-lx,-lz]]){
+      const piv = new THREE.Group(); piv.position.set(x, hip + 0.05, z); body.add(piv);
+      const lg = mesh(G.cyl, F(sp.legC)); lg.scale.set(0.1, sp.leg + 0.05, 0.1); lg.position.y = -(sp.leg + 0.05)/2; piv.add(lg);
+      const paw = mesh(G.sph, F(sp.legC)); paw.scale.set(0.13, 0.08, 0.11); paw.position.set(0.03, -(sp.leg + 0.02), 0); piv.add(paw);
+      legs.push(piv);
+    }
+    // Schwanz
+    const tail = new THREE.Group(); tail.position.set(-sp.bl*0.46, by + sp.bh*0.12, 0); body.add(tail);
+    const tc = sp.tail;
+    if(tc.type === 'bushy'){
+      let a = 0.55, px = 0, py = 0;
+      for(let i=0;i<tc.n;i++){
+        const r = tc.r*(1.05 - 0.05*Math.abs(i - 2.5)), seg = mesh(G.sph, F(i%2 && tc.ring ? tc.ring : tc.c));
+        seg.scale.setScalar(r); seg.position.set(px, py, 0); tail.add(seg);
+        px -= Math.cos(a)*tc.r*1.05; py += Math.sin(a)*tc.r*1.05; a -= 0.13;
+      }
+    } else if(tc.type === 'curl'){
+      let a = 0.15, px = 0, py = 0;
+      for(let i=0;i<16;i++){ const seg = mesh(G.sph, F(tc.c)); seg.scale.setScalar(0.06); seg.position.set(px, py, 0); tail.add(seg);
+        px -= Math.cos(a)*0.1; py += Math.sin(a)*0.1; a += i < 6 ? 0.1 : 0.42; }
+    } else if(tc.type === 'thin'){
+      const c = mesh(G.cone6, F(tc.c)); c.scale.set(0.05, 0.4, 0.05); c.rotation.z = Math.PI/2 + 0.35; c.position.set(-0.15, -0.06, 0); tail.add(c);
+    }
+    const st = {ph:0, look:R()*TAU};
+    return {
+      rig, hatParent:head, hatAnchor:V(0,0,0), hatScale:ek, labelY: by + sp.bh*0.38 + hr + 1.0,
+      portrait:{target:V(head.position.x + hr*0.3, head.position.y, 0), dist:1.6*ek + 0.4},
+      trailY: () => 0.15,
+      update(t, dt, s){
+        const k = Math.min(1, dt*8);
+        if(s.moving){
+          st.ph += dt*(6 + (s.speed||10)*0.6); const ph = st.ph, amp = 0.75;
+          legs[0].rotation.z = Math.sin(ph)*amp; legs[3].rotation.z = Math.sin(ph)*amp;
+          legs[1].rotation.z = -Math.sin(ph)*amp; legs[2].rotation.z = -Math.sin(ph)*amp;
+          body.position.y = Math.abs(Math.sin(ph))*0.09; body.rotation.z = Math.sin(ph)*0.04;
+          head.rotation.z = Math.sin(ph*2)*0.06; head.rotation.y *= 1 - k;
+          tail.rotation.y = Math.sin(ph)*0.35; tail.rotation.z = Math.sin(ph*2)*0.12;
+        } else {
+          legs.forEach(l => l.rotation.z *= 1 - k);
+          body.position.y *= 1 - k; body.rotation.z *= 1 - k; head.rotation.z *= 1 - k;
+          torso.scale.y = sp.bh/2*(1 + Math.sin(t*2.2)*0.025);
+          tail.rotation.y = Math.sin(t*2 + st.look)*0.3; tail.rotation.z = 0;
+          head.rotation.y = Math.sin(t*0.6 + st.look)*0.35;
+        }
+        if(orange) orange.rotation.z = Math.sin(t*1.5)*0.1;
+      }
+    };
+  }
+
+  function buildBird(sp, F){
+    const rig = new THREE.Group(), fly = new THREE.Group(); rig.add(fly);
+    const body = mesh(G.sph, F(sp.body)); body.scale.set(0.62,0.42,0.4); body.position.y = 0.95; fly.add(body);
+    const belly = mesh(G.sph, F(sp.belly)); belly.scale.set(0.45,0.33,0.33); belly.position.set(0.12,0.85,0); fly.add(belly);
+    const head = new THREE.Group(); head.position.set(0.58,1.28,0); fly.add(head);
+    const sk = mesh(G.sph, F(sp.head)); sk.scale.setScalar(0.3); head.add(sk);
+    const bu = mesh(G.cone6, F(sp.beak)); bu.scale.set(0.09,0.28,0.09); bu.rotation.z = -Math.PI/2; bu.position.set(0.38,-0.03,0); head.add(bu);
+    const hook = mesh(G.cone6, F(sp.beak)); hook.scale.set(0.05,0.12,0.06); hook.rotation.z = Math.PI; hook.position.set(0.49,-0.09,0); head.add(hook);
+    for(const s of [-1,1]){
+      if(sp.cheek){ const c = mesh(G.sph, F(sp.cheek)); c.scale.set(0.12,0.14,0.1); c.position.set(0.14,-0.06,s*0.2); head.add(c);
+        const m = mesh(G.sph, F(sp.stache)); m.scale.set(0.05,0.13,0.05); m.position.set(0.2,-0.07,s*0.23); head.add(m); }
+      const iris = mesh(G.sph, std(sp.iris,{roughness:.2}), false); iris.scale.setScalar(0.06); iris.position.set(0.2,0.07,s*0.2); head.add(iris);
+      const pu = mesh(G.sph, MAT.eye, false); pu.scale.setScalar(0.035); pu.position.set(0.245,0.08,s*0.215); head.add(pu);
+      const brow = mesh(G.box, std(sp.brow)); brow.scale.set(0.15,0.035,0.07); brow.position.set(0.19,0.15,s*0.19); brow.rotation.z = -0.35; head.add(brow);
+    }
+    const wings = [];
+    for(const s of [-1,1]){
+      const piv = new THREE.Group(); piv.position.set(0.05,1.05,s*0.32); fly.add(piv);
+      const w = mesh(G.sph, F(sp.wing)); w.scale.set(0.42,0.05,0.6); w.position.z = s*0.55; piv.add(w);
+      for(let k=0;k<3;k++){ const f = mesh(G.sph, F(sp.tip)); f.scale.set(0.12,0.04,0.32); f.position.set(-0.05 - k*0.12, 0, s*(1.05 + k*0.02)); f.rotation.y = s*(0.15 - k*0.25); piv.add(f); }
+      piv.userData.s = s; wings.push(piv);
+    }
+    const tail = mesh(G.sph, F(sp.tail)); tail.scale.set(0.32,0.05,0.24); tail.position.set(-0.7,0.92,0); tail.rotation.z = 0.25; fly.add(tail);
+    const legs = new THREE.Group(); legs.position.set(0.1,0.62,0); fly.add(legs);
+    for(const s of [-1,1]){
+      const lg = mesh(G.cyl, std(sp.feet)); lg.scale.set(0.04,0.55,0.04); lg.position.set(0,-0.3,s*0.14); legs.add(lg);
+      const ft = mesh(G.sph, std(sp.feet)); ft.scale.set(0.12,0.04,0.08); ft.position.set(0.05,-0.58,s*0.14); legs.add(ft);
+    }
+    const st = {h:0, ph:0};
+    return {
+      rig, hatParent:head, hatAnchor:V(0,0,0), hatScale:0.72, labelY:3.0,
+      portrait:{target:V(0.62,1.25,0), dist:1.5},
+      trailY: () => fly.position.y + 0.9,
+      update(t, dt, s){
+        const k = Math.min(1, dt*3);
+        st.h += ((s.fly ? 1.05 : 0) - st.h)*k;
+        st.ph += dt*(s.moving || s.fly ? (s.stuck ? 24 : 13) : 0);
+        const flying = st.h > 0.2;
+        fly.position.y = st.h + (flying ? Math.sin(st.ph)*0.1 : 0);
+        fly.rotation.z = flying ? -0.12 : 0;
+        legs.rotation.z += ((flying ? 1.3 : 0) - legs.rotation.z)*k;
+        wings.forEach(w => {
+          const s2 = w.userData.s;
+          if(flying) w.rotation.x = s2*(Math.sin(st.ph)*0.85);
+          else { const ruffle = (t % 5) < 0.6 ? Math.sin(t*20)*0.25 : 0; w.rotation.x += (s2*(1.25 + ruffle) - w.rotation.x)*Math.min(1, dt*6); }
+        });
+        head.rotation.y = flying ? 0 : Math.sin(t*0.8)*0.4;
+      }
+    };
+  }
+
+  function buildFish(sp, F, env){
+    const rig = new THREE.Group(), cart = new THREE.Group(); rig.add(cart);
+    const wood = std('#9b6b3e'), dark = std('#2d2d2d'), steel = std('#d9d9d9',{roughness:.3});
+    const base = mesh(G.box, wood); base.scale.set(1.3,0.14,0.95); base.position.y = 0.36; cart.add(base);
+    const wheels = [];
+    for(const [x,z] of [[.45,.5],[.45,-.5],[-.45,.5],[-.45,-.5]]){
+      const w = new THREE.Group(); w.position.set(x,0.2,z); cart.add(w);
+      const c = mesh(G.cyl, dark); c.scale.set(0.2,0.1,0.2); c.rotation.x = Math.PI/2; w.add(c);
+      const sp2 = mesh(G.box, steel); sp2.scale.set(0.32,0.04,0.12); w.add(sp2);
+      wheels.push(w);
+    }
+    const RB = 0.82, bowl = new THREE.Group(); bowl.position.y = 1.25; cart.add(bowl);
+    // Fisch (undurchsichtig, wird zuerst gezeichnet)
+    const fish = new THREE.Group(); fish.position.y = -0.1; bowl.add(fish);
+    const fb = mesh(G.sph, F(sp.main)); fb.scale.set(0.36,0.17,0.12); fish.add(fb);
+    const bk = mesh(G.sph, F(sp.back)); bk.scale.set(0.3,0.1,0.1); bk.position.y = 0.07; fish.add(bk);
+    const bl = mesh(G.sph, F(sp.belly)); bl.scale.set(0.28,0.09,0.1); bl.position.y = -0.06; fish.add(bl);
+    const tailF = new THREE.Group(); tailF.position.x = -0.33; fish.add(tailF);
+    const tf = mesh(G.cone6, F(sp.fin)); tf.scale.set(0.16,0.24,0.04); tf.rotation.z = -Math.PI/2; tf.position.x = -0.1; tailF.add(tf);
+    const df = mesh(G.cone6, F(sp.fin)); df.scale.set(0.08,0.14,0.03); df.position.set(0.02,0.18,0); df.rotation.z = 0.4; fish.add(df);
+    for(const s of [-1,1]){ const e = mesh(G.sph, MAT.eye, false); e.scale.setScalar(0.035); e.position.set(0.26,0.04,s*0.09); fish.add(e); }
+    for(let i=0;i<7;i++){ const p = mesh(G.sph, std(pick(['#ff7aa2','#7ae0ff','#ffd23f','#ffffff','#b19cff']))); p.scale.setScalar(0.07);
+      const a = R()*TAU, r = R()*0.4; p.position.set(Math.cos(a)*r, -RB*0.86 + 0.04, Math.sin(a)*r); bowl.add(p); }
+    // Wasser + Glas (transparent)
+    const water = new THREE.Group(); bowl.add(water);
+    const wl = 0.42*Math.PI;
+    const wm = new THREE.Mesh(new THREE.SphereGeometry(RB*0.96, 24, 12, 0, TAU, wl, Math.PI - wl), new THREE.MeshStandardMaterial({color:'#3fa9e0', transparent:true, opacity:.35, roughness:.1, depthWrite:false, side:THREE.DoubleSide}));
+    wm.renderOrder = 2; water.add(wm);
+    const surf = new THREE.Mesh(new THREE.CircleGeometry(RB*0.96*Math.sin(wl), 24), new THREE.MeshStandardMaterial({color:'#8fd3f5', transparent:true, opacity:.5, depthWrite:false, side:THREE.DoubleSide}));
+    surf.rotation.x = -Math.PI/2; surf.position.y = RB*0.96*Math.cos(wl); surf.renderOrder = 2; water.add(surf);
+    const glass = new THREE.Mesh(new THREE.SphereGeometry(RB, 28, 18, 0, TAU, 0.5, Math.PI - 0.5),
+      new THREE.MeshStandardMaterial({color:'#e6f7ff', transparent:true, opacity:.2, roughness:.05, metalness:.3, envMap:env, side:THREE.DoubleSide, depthWrite:false}));
+    glass.renderOrder = 3; bowl.add(glass);
+    const rimY = RB*Math.cos(0.5);
+    const rim = mesh(new THREE.TorusGeometry(RB*Math.sin(0.5), 0.05, 8, 24), std('#dff4ff',{roughness:.1})); rim.rotation.x = Math.PI/2; rim.position.y = rimY; bowl.add(rim);
+    const st = {dist:0, prevX:null, vel:0, slosh:0};
+    return {
+      rig, hatParent:bowl, hatAnchor:V(0, rimY - 0.36, 0), hatScale:1, labelY:2.7,
+      portrait:{target:V(0,1.15,0), dist:2.6},
+      trailY: () => 1.9,
+      update(t, dt, s){
+        const x = s.x || 0, dx = st.prevX === null ? 0 : x - st.prevX; st.prevX = x; st.dist += dx;
+        const v = dt > 0 ? dx/dt : 0, acc = dt > 0 ? (v - st.vel)/dt : 0; st.vel = v;
+        wheels.forEach(w => w.rotation.z = -st.dist/0.2);
+        st.slosh += (Math.max(-2, Math.min(2, -acc*0.03)) - st.slosh)*Math.min(1, dt*4);
+        water.rotation.z = st.slosh*0.12 + (s.moving ? Math.sin(t*7)*0.05 : 0);
+        fish.position.x = Math.sin(t*1.3)*0.16; fish.position.y = -0.1 + Math.sin(t*2)*0.04;
+        fish.rotation.y = Math.cos(t*1.3)*0.5;
+        fish.rotation.z = s.stuck ? Math.sin(t*20)*0.4 : 0;
+        tailF.rotation.y = Math.sin(t*(s.moving ? 16 : 7))*0.5;
+        cart.position.y = s.moving ? Math.abs(Math.sin(st.dist*2.5))*0.03 : 0;
+      }
+    };
+  }
+
+  function buildDuckRig(F){
+    const rig = new THREE.Group();
+    const m = F('#ffd23f'), m2 = F('#f0c22f');
+    const body = mesh(G.dBody, m); body.scale.set(1.35,0.75,1); body.position.y = 0.3; rig.add(body);
+    const head = mesh(G.dHead, m); head.position.set(0.62,1.0,0); rig.add(head);
+    const beak = mesh(G.dBeak, MAT.beak); beak.rotation.z = -Math.PI/2; beak.scale.set(0.6,1,1); beak.position.set(1.12,0.95,0); rig.add(beak);
+    for(const s of [-1,1]){
+      const eye = mesh(G.sph, MAT.eye, false); eye.scale.setScalar(0.075); eye.position.set(0.92,1.12,s*0.24); rig.add(eye);
+      const wing = mesh(G.dWing, m2); wing.scale.set(0.95,0.45,0.25); wing.position.set(-0.05,0.45,s*0.66); rig.add(wing);
+    }
+    const tail = mesh(G.dTail, m); tail.position.set(-0.95,0.55,0); tail.rotation.z = 0.95; rig.add(tail);
+    const st = {ph:0};
+    return {
+      rig, hatParent:rig, hatAnchor:V(0.62,1.0,0), hatScale:1, labelY:2.15,
+      portrait:{target:V(0.62,0.95,0), dist:2.0}, trailY: () => 0.15,
+      update(t, dt, s){
+        if(s.moving){ st.ph += dt*14; rig.rotation.x = Math.sin(st.ph)*0.18; rig.position.y = Math.abs(Math.sin(st.ph))*0.08; }
+        else { rig.rotation.x *= 0.9; rig.position.y *= 0.9; }
+      }
+    };
+  }
+
+  /* Ein Tier mit Look zusammenbauen */
+  function buildAnimal(animal, look, name, env){
+    look = Object.assign({hat:'none', skin:'normal', trail:'splash', dance:'hop'}, look || {});
+    const key = ANIMALS[animal] ? animal : DEFAULT_ANIMAL, A = ANIMALS[key];
+    const group = new THREE.Group(), inner = new THREE.Group(); group.add(inner);
+    const furs = [];
+    const F = c => {
+      let m;
+      if(look.skin === 'gold') m = metal('#ffc93c', env, .22);
+      else if(look.skin === 'chrome') m = metal('#eef3f7', env, .06);
+      else m = std(c, {roughness:.6});
+      furs.push({m, l:new THREE.Color(c).getHSL({}).l}); return m;
+    };
+    const hasHat = !!HATS[look.hat];
+    let b;
+    if(A.cls === 'quad') b = buildQuad(QUAD[key], F, hasHat);
+    else if(A.cls === 'bird') b = buildBird(BIRD[key], F);
+    else if(A.cls === 'fish') b = buildFish(FISH[key], F, env);
+    else b = buildDuckRig(F);
+    inner.add(b.rig);
+    let hat = null;
+    if(hasHat){ hat = HATS[look.hat](env); hat.position.copy(b.hatAnchor); hat.scale.setScalar(b.hatScale); b.hatParent.add(hat); }
+    let label = null;
+    if(name){ label = makeLabel(name, A.ui); label.position.y = b.labelY + (hasHat ? 0.45 : 0); group.add(label); }
+    const rainbow = look.skin === 'rainbow', phase = R()*TAU;
+    return {group, inner, label, look, cls:A.cls, b, x:0, z:0, phase, stuck:false, kind:null, obst:null,
+      anim(t, dt, st){
+        if(rainbow){ const h = (t*0.15 + phase) % 1; furs.forEach(f => f.m.color.setHSL(h, .75, .3 + f.l*.45)); }
+        if(hat && hat.userData.anim) hat.userData.anim(t);
+        b.update(t, dt, st);
+      },
+      trailY(){ return b.trailY(); }
+    };
+  }
+
+  /* ---------- Partikel ---------- */
+  function createParticles(sc, n){
+    const list = []; let cur = 0;
+    for(let i=0;i<n;i++){
+      const mt = new THREE.MeshStandardMaterial({color:'#fff', roughness:.6, flatShading:true, transparent:true});
+      const m = new THREE.Mesh(G.particle, mt); m.visible = false; sc.add(m);
+      list.push({m, v:new THREE.Vector3(), life:0, max:1, g:7, s:1});
+    }
+    return {
+      spawn(x,y,z, vx,vy,vz, life, g, s, color, emissive='#000000', opacity=1){
+        const p = list[cur]; cur = (cur+1) % n;
+        p.m.position.set(x,y,z); p.v.set(vx,vy,vz); p.life = p.max = life; p.g = g; p.s = s;
+        p.m.material.color.set(color); p.m.material.emissive.set(emissive); p.m.material.opacity = opacity; p.m.visible = true;
+      },
+      update(dt){
+        list.forEach(p => {
+          if(p.life <= 0) return;
+          p.life -= dt; p.v.y -= p.g*dt; p.m.position.addScaledVector(p.v, dt);
+          p.m.scale.setScalar(Math.max(0.01, p.s*p.life/p.max));
+          if(p.life <= 0 || p.m.position.y < -0.3){ p.life = 0; p.m.visible = false; }
+        });
+      }
+    };
+  }
+  function dust(p, x, y, z, n, spread=1.5, color='#c9a77c'){
+    for(let i=0;i<n;i++) p.spawn(x, y, z, (R()-.6)*spread, 0.6 + R()*spread*0.8, (R()-.5)*spread, 0.6 + R()*0.4, 1.2, 1.6, color, '#000000', .8);
+  }
+  function emitTrail(p, type, x, y, z, t, back=0, cls='quad'){
+    switch(type){
+      case 'bubbles': p.spawn(x+R()*.3, y+0.2, z+(R()-.5)*.6, -0.3-back, 0.4+R()*.4, (R()-.5)*.4, 1.4, -0.3, 1.8, '#d8f4ff', '#2a6f8a', .5); break;
+      case 'rainbow': { const c = new THREE.Color().setHSL((t*0.6 + R()*0.08) % 1, .9, .6);
+        p.spawn(x, y+0.15, z+(R()-.5)*.5, -0.6-back, 0.9+R()*.5, (R()-.5)*.6, .8, 3, 1.3, c, c.clone().multiplyScalar(.5)); break; }
+      case 'sparkle': p.spawn(x+(R()-.5)*.4, y+0.3+R()*.4, z+(R()-.5)*.8, (R()-.5)*1.5-back, (R()-.3)*1.5, (R()-.5)*1.5, .7, 1, .7, '#ffe066', '#c99a00'); break;
+      case 'fire': p.spawn(x+(R()-.5)*.3, y+0.2, z+(R()-.5)*.5, -0.4-back, 1.5+R(), (R()-.5)*.5, .5, -1.5, 1.3, pick(['#ffcc33','#ff7a1a','#ff3d1a']), '#ff5500'); break;
+      default:
+        if(cls === 'fish') p.spawn(x+0.8, y, z+(R()-.5)*.5, -0.5-back+(R()-.5), 1.5+R(), (R()-.5)*1.2, .6, 7, .7, '#6fc3f0', '#1a5a80', .8);
+        else if(cls === 'bird') p.spawn(x, y, z+(R()-.5)*.4, -0.4-back, 0.2, (R()-.5)*.4, 1.2, 0.5, .8, '#efe5cf', '#000000', .9);
+        else p.spawn(x, y, z+(R()-.5)*.5, (R()-.8)*0.8-back, 0.5+R()*0.6, (R()-.5)*0.8, .7, 0.8, 1.5, '#c9a77c', '#000000', .7);
+    }
+  }
+
+  /* ---------- Siegestänze ---------- */
+  function applyDance(d, type, t, dt, p){
+    const inn = d.inner; inn.position.x = 0; inn.rotation.z = 0;
+    switch(type){
+      case 'spin': inn.position.y = 0.5 + Math.sin(t*3)*0.25; inn.rotation.y += dt*14; break;
+      case 'flip': { const ph = (t % 1.2)/1.2; inn.position.y = Math.sin(ph*Math.PI)*2.4; inn.rotation.z = ph*TAU; inn.rotation.y += dt*0.8; break; }
+      case 'moonwalk': { const u = (t*0.7) % 2; inn.rotation.y = 0; inn.position.x = u < 1 ? 1.2 - u*2.4 : -1.2 + (u-1)*2.4;
+        inn.rotation.z = Math.sin(t*10)*0.2; inn.position.y = Math.abs(Math.sin(t*10))*0.15; break; }
+      case 'rocket': { const ph = (t % 3.2)/3.2;
+        if(ph < 0.45){ const u = ph/0.45; inn.position.y = u*u*14; inn.rotation.y += dt*16;
+          if(p){ const gp = d.group.position; for(let k=0;k<2;k++) p.spawn(gp.x+(R()-.5)*.4, gp.y+inn.position.y, gp.z+(R()-.5)*.4, (R()-.5)*.8, -2-R()*2, (R()-.5)*.8, .6, -1, 1.4, pick(['#ffcc33','#ff7a1a','#ff3d1a']), '#ff5500'); } }
+        else { const u = (ph-0.45)/0.55; inn.position.y = 14*Math.pow(1-u, 2); inn.rotation.y += dt*2; }
+        break; }
+      default: inn.position.y = Math.abs(Math.sin(t*6))*1.2; inn.rotation.y += dt*2.5; inn.rotation.z = Math.sin(t*6)*0.1;
+    }
+  }
+
+  /* ---------- Landschaft ---------- */
+  function makeTree(r){
+    const g = new THREE.Group(), h = 0.9 + r()*1.6, sc = 0.8 + r()*1.0;
+    const trunk = mesh(G.trunk, MAT.trunk); trunk.scale.set(sc, h, sc); trunk.position.y = h/2; g.add(trunk);
+    const leaf = MAT.leaves[r() < 0.22 ? 4 + (r()*2|0) : r()*4|0];
+    if(r() < 0.55){
+      for(let k=0;k<3;k++){ const c = mesh(G.cone, leaf); const s = (1.5 - k*0.35)*sc; c.scale.set(s, sc, s); c.position.y = h + 0.6*sc + k*0.9*sc; c.rotation.y = r()*TAU; g.add(c); }
+    } else {
+      const b = mesh(G.ico, leaf); const s = 1.3*sc; b.scale.set(s, s*1.1, s); b.position.y = h + s*0.8; b.rotation.y = r()*TAU; g.add(b);
+    }
+    return g;
+  }
+  function makeFern(r){
+    const g = new THREE.Group();
+    for(let i=0;i<6;i++){ const f = mesh(G.cone6, MAT.fern, false); f.scale.set(0.12, 0.7 + r()*0.3, 0.04); const a = i/6*TAU;
+      f.rotation.set(Math.sin(a)*0.9, a, Math.cos(a)*0.9); f.position.y = 0.3; g.add(f); }
+    return g;
+  }
+  function makeShroom(r, s=1){
+    const g = new THREE.Group();
+    const st = mesh(G.cyl, MAT.stem); st.scale.set(0.08*s, 0.3*s, 0.08*s); st.position.y = 0.15*s; g.add(st);
+    const cap = mesh(new THREE.SphereGeometry(0.22*s, 10, 6, 0, TAU, 0, Math.PI/2), MAT.capRed); cap.position.y = 0.28*s; g.add(cap);
+    return g;
+  }
+  function bannerTex(text){
+    return canvasTex(1024, 192, (x, w, h) => {
+      x.fillStyle = '#ffd23f'; x.fillRect(0,0,w,h);
+      for(let i=0;i<w/24;i++) for(let j=0;j<2;j++){ x.fillStyle = (i+j)%2 ? '#222' : '#fff'; x.fillRect(i*24, j*24, 24, 24); x.fillRect(i*24, h-48+j*24, 24, 24); }
+      x.fillStyle = '#3a2a00'; x.font = '700 96px Fredoka, system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(text, w/2, h/2+4);
+    });
+  }
+  function makeArch(x, text){
+    const g = new THREE.Group(); g.position.x = x;
+    for(const s of [-1,1]){ const p = mesh(G.post, MAT.post); p.position.set(0, 2.6, s*(W/2+0.7)); g.add(p); }
+    const tex = bannerTex(text), bm = new THREE.MeshStandardMaterial({map:tex, roughness:.6});
+    const banner = mesh(new THREE.BoxGeometry(0.3, 1.4, W+2), [bm, bm, MAT.post, MAT.post, MAT.post, MAT.post]);
+    banner.position.y = 4.8; g.add(banner);
+    return g;
+  }
+  function makeCloud(r){
+    const g = new THREE.Group();
+    for(let i=0;i<4;i++){ const b = mesh(G.ico, MAT.cloud, false); const s = 2.5 + r()*2.5; b.scale.set(s, s*0.6, s); b.position.set(i*3 - 4, r()*1.5, r()*2); g.add(b); }
+    return g;
+  }
+  function webTex(){
+    return canvasTex(256, 256, (x) => {
+      x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 2.5;
+      for(let i=0;i<12;i++){ const a = i/12*TAU; x.beginPath(); x.moveTo(128,128); x.lineTo(128+Math.cos(a)*125, 128+Math.sin(a)*125); x.stroke(); }
+      for(let r=14;r<125;r+=13){ x.beginPath(); for(let i=0;i<=12;i++){ const a = i/12*TAU, rr = r*(0.92 + 0.08*Math.cos(i*7)); const px = 128+Math.cos(a)*rr, py = 128+Math.sin(a)*rr; i ? x.lineTo(px,py) : x.moveTo(px,py); } x.stroke(); }
+    });
+  }
+  let WEB = null;
+
+  /* ---------- Hindernisse: erscheinen erst kurz bevor ihr Tier ankommt ---------- */
+  function makeObstacle(kind, x, z){
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.visible = false;
+    const side = z >= 0 ? 1 : -1;
+    const o = {g, kind, x, z, st:-1, landed:false};
+    let update = () => {}, onTrigger = () => {}, onLand = () => dust(ps, x, 0.2, z, 18, 2);
+    if(kind === 'mud'){
+      const mm = std('#5a3b1e',{roughness:.2, metalness:.1});
+      for(const [dx,dz,r] of [[0,0,1.25],[0.7,0.5,0.6],[-0.6,-0.5,0.7]]){ const c = new THREE.Mesh(new THREE.CircleGeometry(r, 14), mm); c.rotation.x = -Math.PI/2; c.position.set(dx,0.03,dz); c.receiveShadow = true; g.add(c); }
+      update = (t, s) => { g.scale.setScalar(Math.max(0.01, easeOut(s))); if(s >= 1 && R() < 0.04) ps.spawn(x+(R()-.5)*1.5, 0.05, z+(R()-.5)*1.5, 0, 0.6, 0, .5, 1, .8, '#6b4a2a'); };
+      onTrigger = () => dust(ps, x, 0.3, z, 20, 2.5, '#6b4a2a'); onLand = () => {};
+    } else if(kind === 'log'){
+      const piv = new THREE.Group(); piv.position.set(0, 0, side*1.6); g.add(piv);
+      const tr = mesh(new THREE.CylinderGeometry(0.32,0.4,3.4,10), MAT.trunk); tr.position.y = 1.7; piv.add(tr);
+      const crown = mesh(G.ico, MAT.leaves[0]); crown.scale.set(0.9,0.8,0.9); crown.position.y = 3.6; piv.add(crown);
+      update = (t, s) => { const e = s < 1 ? Math.pow(s, 2.2) : 1; piv.rotation.x = -side*(Math.PI/2 - 0.12)*e; };
+      onLand = () => { dust(ps, x, 0.3, z, 30, 3); shake = Math.max(shake, 0.35); sfx('bonk'); };
+    } else if(kind === 'hedgehog'){
+      const hh = new THREE.Group(); g.add(hh);
+      const b = mesh(G.sph, std('#7a5a3a')); b.scale.set(0.5,0.38,0.42); b.position.y = 0.25; hh.add(b);
+      const spk = std('#4a3524');
+      for(let i=0;i<22;i++){ const a = R()*TAU, el = R()*1.1; const c = mesh(G.cone6, spk, false); c.scale.set(0.05,0.28,0.05);
+        const dir = V(Math.cos(a)*Math.cos(el)*0.9 - 0.2, Math.sin(el)+0.1, Math.sin(a)*Math.cos(el)).normalize();
+        c.position.set(dir.x*0.42, 0.25 + dir.y*0.33, dir.z*0.38); c.quaternion.setFromUnitVectors(V(0,1,0), dir); hh.add(c); }
+      const face = mesh(G.cone6, std('#d8b48a')); face.scale.set(0.16,0.3,0.16); face.rotation.z = -Math.PI/2; face.position.set(0.52,0.2,0); hh.add(face);
+      const ns = mesh(G.sph, MAT.nose); ns.scale.setScalar(0.05); ns.position.set(0.67,0.2,0); hh.add(ns);
+      for(const s of [-1,1]){ const e = mesh(G.sph, MAT.eye, false); e.scale.setScalar(0.035); e.position.set(0.48,0.3,s*0.1); hh.add(e); }
+      hh.rotation.y = side*Math.PI/2;
+      update = (t, s) => { const e = easeOut(s); g.position.z = z + side*5*(1-e); hh.position.y = s < 1 ? Math.abs(Math.sin(t*14))*0.06 : 0; hh.rotation.x = s >= 1 ? Math.sin(t*6)*0.05 : 0; };
+      onLand = () => {};
+    } else if(kind === 'mushroom'){
+      const sh = makeShroom(R, 4); g.add(sh);
+      for(let i=0;i<7;i++){ const a = R()*TAU, el = 0.3 + R()*1.0; const d2 = mesh(G.sph, MAT.white, false); d2.scale.setScalar(0.12);
+        d2.position.set(Math.cos(a)*Math.cos(el)*0.86, 1.12 + Math.sin(el)*0.86, Math.sin(a)*Math.cos(el)*0.86); sh.add(d2); }
+      update = (t, s) => { const e = elastic(s); sh.scale.set(Math.max(.01,e), Math.max(.01,e), Math.max(.01,e)); };
+      onTrigger = () => dust(ps, x, 0.2, z, 16, 2, '#6b4a2a');
+    } else if(kind === 'bush'){
+      const bush = new THREE.Group(); g.add(bush);
+      for(const [dx,dy,dz,s] of [[0,.55,0,.75],[.45,.4,.4,.5],[-.4,.4,-.45,.55],[.1,.4,-.5,.45],[-.3,.45,.45,.5]]){ const b = mesh(G.ico, MAT.leaves[2]); b.scale.setScalar(s); b.position.set(dx,dy,dz); bush.add(b); }
+      for(let i=0;i<12;i++){ const be = mesh(G.sph, std('#b3123a',{roughness:.3}), false); be.scale.setScalar(0.07); const a = R()*TAU; be.position.set(Math.cos(a)*0.7, 0.3 + R()*0.6, Math.sin(a)*0.7); bush.add(be); }
+      update = (t, s) => { const e = elastic(s); bush.scale.setScalar(Math.max(.01, e)); bush.rotation.y = s >= 1 ? Math.sin(t*3)*0.05 : 0; };
+    } else if(kind === 'web'){
+      WEB = WEB || webTex();
+      for(const s of [-1,1]){ const st = mesh(G.cyl, MAT.wood); st.scale.set(0.06,3.0,0.06); st.position.set(0,1.5,s*1.55); g.add(st); }
+      const web = new THREE.Mesh(new THREE.CircleGeometry(1.45, 24), new THREE.MeshBasicMaterial({map:WEB, transparent:true, depthWrite:false, side:THREE.DoubleSide}));
+      web.rotation.y = Math.PI/2; web.position.y = 1.9; g.add(web);
+      const spider = new THREE.Group(); g.add(spider);
+      const sb = mesh(G.sph, std('#1b1b1b')); sb.scale.setScalar(0.14); spider.add(sb);
+      for(let i=0;i<4;i++) for(const s of [-1,1]){ const lg = mesh(G.cyl, std('#1b1b1b'), false); lg.scale.set(0.015,0.3,0.015); lg.rotation.x = s*(0.8 + i*0.25); lg.position.z = s*0.12; spider.add(lg); }
+      update = (t, s) => { const e = easeOut(s); g.scale.set(1, Math.max(.01,e), 1); web.material.opacity = e; spider.position.set(0.05, 3.2 - e*1.0 + Math.sin(t*2)*0.1, 0.4); };
+      onLand = () => {};
+    } else if(kind === 'branch'){
+      const br = new THREE.Group(); g.add(br);
+      const bc = mesh(new THREE.CylinderGeometry(0.12,0.18,3.6,8), MAT.trunk); bc.rotation.x = Math.PI/2; br.add(bc);
+      for(let i=0;i<5;i++){ const lf = mesh(G.ico, MAT.leaves[i%4]); lf.scale.setScalar(0.35 + R()*0.2); lf.position.set((R()-.5)*0.4, 0.15 + R()*0.2, -1.5 + i*0.75); br.add(lf); }
+      update = (t, s) => { const e = easeOut(s); br.position.y = 1.85 + 6*(1-e) + (s >= 1 ? Math.sin(t*3)*0.06 : 0); br.rotation.x = (1-e)*0.8 + (s >= 1 ? Math.sin(t*2.5)*0.04 : 0); };
+      onLand = () => { for(let i=0;i<12;i++) ps.spawn(x+(R()-.5)*1, 1.9, z+(R()-.5)*3, (R()-.5), 0.5, (R()-.5), 1.2, 1.5, .9, pick(['#57b347','#7cc254','#d9822b'])); };
+    } else if(kind === 'pinecone'){
+      const pc = new THREE.Group(); g.add(pc);
+      const c = mesh(G.cone6, std('#7a4e2a')); c.scale.set(0.28,0.6,0.28); c.rotation.z = Math.PI; pc.add(c);
+      for(let i=0;i<4;i++){ const r = mesh(G.torus, std('#5e3a1e'), false); r.scale.set(0.24 - i*0.05, 0.24 - i*0.05, 0.8); r.rotation.x = Math.PI/2; r.position.y = 0.15 - i*0.12; pc.add(r); }
+      update = (t, s) => { const e = Math.min(1, s*s); pc.position.y = 0.3 + 10*(1-e); pc.rotation.y = t*6*(1-e); pc.rotation.z = s >= 1 ? 1.4 : 0; };
+    } else if(kind === 'wind'){
+      const swirls = [];
+      for(let i=0;i<3;i++){ const sw = new THREE.Mesh(new THREE.TorusGeometry(0.5 + i*0.2, 0.03, 6, 20, Math.PI*1.3), new THREE.MeshBasicMaterial({color:'#ffffff', transparent:true, opacity:.7})); sw.rotation.y = Math.PI/2; sw.position.set(0.5, 1.4 + i*0.3, (i-1)*0.6); g.add(sw); swirls.push(sw); }
+      update = (t, s, dt) => { swirls.forEach((sw,i) => { sw.rotation.x = t*(4 + i); sw.material.opacity = 0.7*easeOut(s); });
+        if(R() < 0.5) ps.spawn(x + 3, 1 + R()*1.5, z + (R()-.5)*2.5, -6 - R()*3, (R()-.5), (R()-.5), .8, 0, .9, pick(['#7cc254','#d9822b','#e3b13a'])); };
+      onLand = () => {};
+    } else if(kind === 'root'){
+      for(let i=0;i<3;i++){ const r = mesh(new THREE.TorusGeometry(0.45 + R()*0.15, 0.09, 6, 12, Math.PI), MAT.trunk); r.rotation.y = Math.PI/2 + (R()-.5)*0.6; r.position.set((R()-.5)*0.6, 0, (i-1)*0.9); r.userData.y0 = -0.7; g.add(r); }
+      update = (t, s) => { const e = easeOut(s); g.children.forEach(r => r.position.y = -0.7*(1-e)); };
+      onTrigger = () => dust(ps, x, 0.2, z, 18, 2, '#6b4a2a');
+    } else if(kind === 'rock'){
+      const r = mesh(G.rock, MAT.rock); r.scale.set(0.8,0.6,0.8); r.position.y = 0.45; g.add(r);
+      update = (t, s) => { const e = easeOut(s); g.position.z = z + side*6*(1-e); r.rotation.x = -side*(1-e)*8;
+        if(s < 1 && R() < 0.5) dust(ps, x, 0.1, g.position.z, 1, 1); };
+    }
+    o.trigger = () => { if(o.st >= 0) return; o.st = 0; g.visible = true; onTrigger(); };
+    o.update = (t, dt) => {
+      if(o.st < 0) return;
+      o.st += dt; const s = Math.min(1, o.st/0.9);
+      update(t, s, dt);
+      if(s >= 1 && !o.landed){ o.landed = true; onLand(); }
+    };
+    return o;
+  }
+
+  function buildWorld(count){
+    if(world) scene.remove(world);
+    world = new THREE.Group(); scene.add(world);
+    nLanes = count; W = count*LANE + 1;
+    const r = mulberry32(7);
+
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), MAT.grass); ground.rotation.x = -Math.PI/2; ground.position.x = L/2; ground.receiveShadow = true; world.add(ground);
+    // Waldweg mit leicht fleckiger Erde
+    const pg = new THREE.PlaneGeometry(L+90, W+1.4, 90, 8), cols = [], base = new THREE.Color('#b8905c'), tmp = new THREE.Color();
+    for(let i=0;i<pg.attributes.position.count;i++){ tmp.copy(base).offsetHSL((r()-.5)*0.02, (r()-.5)*0.08, (r()-.5)*0.08); cols.push(tmp.r, tmp.g, tmp.b); }
+    pg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    const path = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({vertexColors:true, roughness:1, flatShading:true}));
+    path.rotation.x = -Math.PI/2; path.position.set(L/2, 0.012, 0); path.receiveShadow = true; world.add(path);
+    // Kreidelinien
+    for(let k=1;k<count;k++){ const ln = new THREE.Mesh(G.box, MAT.chalk); ln.scale.set(L+2, 0.01, 0.07); ln.position.set(L/2, 0.02, (k - count/2)*LANE); world.add(ln); }
+    for(const lx of [0, L]){ const ln = new THREE.Mesh(G.box, MAT.chalk); ln.scale.set(0.3, 0.012, W); ln.position.set(lx, 0.022, 0); world.add(ln); }
+    // Randsteine
+    const stones = new THREE.InstancedMesh(G.rock, MAT.rock, 2*Math.ceil((L+80)/1.3)), mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    let si = 0;
+    for(const s of [-1,1]) for(let x=-35;x<L+45;x+=1.3){ q.setFromEuler(new THREE.Euler(r()*3, r()*3, r()*3)); const k = 0.15 + r()*0.15; sc.set(k, k*0.7, k);
+      mtx.compose(V(x + r()*0.4, 0.06, s*(W/2 + 0.75)), q, sc); stones.setMatrixAt(si++, mtx); }
+    stones.count = si; stones.castShadow = true; world.add(stones);
+
+    for(let i=0;i<170;i++){ const t = makeTree(r), s = r() < .5 ? -1 : 1; t.position.set(-70 + r()*(L+150), 0, s*(W/2 + 3.5 + r()*42)); world.add(t); }
+    for(let i=0;i<90;i++){ const f = makeFern(r), s = r() < .5 ? -1 : 1; f.position.set(-30 + r()*(L+70), 0, s*(W/2 + 1.4 + r()*5)); f.scale.setScalar(0.7 + r()*0.6); world.add(f); }
+    for(let i=0;i<45;i++){ const m = makeShroom(r, 0.8 + r()*0.8), s = r() < .5 ? -1 : 1; m.position.set(-30 + r()*(L+70), 0, s*(W/2 + 1.5 + r()*8)); world.add(m); }
+    for(let i=0;i<50;i++){ const b = mesh(G.ico, MAT.leaves[r()*3|0]), s = r() < .5 ? -1 : 1, k = 0.5 + r()*0.7; b.scale.set(k, k*0.8, k); b.position.set(-40 + r()*(L+100), k*0.5, s*(W/2 + 2.5 + r()*15)); world.add(b); }
+    for(let i=0;i<18;i++){ const s = r() < .5 ? -1 : 1, k = 0.4 + r()*0.3; const st = mesh(G.cyl, MAT.trunk); st.scale.set(k, 0.5, k); st.position.set(-30 + r()*(L+60), 0.25, s*(W/2 + 2 + r()*10)); world.add(st);
+      const top = mesh(G.cyl, MAT.stump); top.scale.set(k*0.95, 0.02, k*0.95); top.position.set(st.position.x, 0.51, st.position.z); world.add(top); }
+    for(let i=0;i<40;i++){ const k = mesh(G.rock, MAT.rock), s = r() < .5 ? -1 : 1, kk = 0.3 + r()*0.8; k.scale.set(kk, kk*0.7, kk); k.rotation.set(r(), r(), r()); k.position.set(-40 + r()*(L+100), kk*0.2, s*(W/2 + 2 + r()*14)); world.add(k); }
+    for(let i=0;i<180;i++){ const f = mesh(G.flower, MAT.flowers[r()*4|0], false), s = r() < .5 ? -1 : 1; f.position.set(-40 + r()*(L+100), 0.1, s*(W/2 + 1.5 + r()*20)); world.add(f); }
+
+    world.add(makeArch(-1.5, 'START'));
+    world.add(makeArch(L, '🏁  ZIEL  🏁'));
+
+    spectators = [];
+    const kinds = Object.keys(ANIMALS).filter(k => k !== 'duck');
+    for(let i=0;i<16;i++){
+      const s = i < 11 ? -1 : 1, d = buildAnimal(kinds[i % kinds.length], null, null, ENV);
+      const x = s < 0 ? L - 16 + i*2.3 + r() : L + 4 + (i-11)*2.3;
+      d.group.scale.setScalar(0.45); d.group.position.set(x, 0, s*(W/2 + 2 + r()*1.5));
+      d.group.rotation.y = s > 0 ? Math.PI/2 : -Math.PI/2; d.ph = r()*TAU; world.add(d.group); spectators.push(d);
+    }
+    clouds = [];
+    for(let i=0;i<12;i++){ const c = makeCloud(r); c.position.set(-60 + r()*(L+140), 34 + r()*14, (r()-.5)*160); world.add(c); clouds.push(c); }
+  }
+
+  function init(){
+    const stage = $('#stage');
+    try { renderer = new THREE.WebGLRenderer({antialias:true}); } catch(e){ return false; }
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    stage.prepend(renderer.domElement);
+    ENV = makeEnv(renderer);
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color('#a8dcf0'); scene.fog = new THREE.Fog('#b9e0d2', 60, 200);
+    camera = new THREE.PerspectiveCamera(50, 1, 0.1, 600);
+    scene.add(new THREE.HemisphereLight('#fff6e0', '#4a6b2a', 0.8));
+    sun = new THREE.DirectionalLight('#fff1d0', 1.05); sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, {left:-40, right:40, top:40, bottom:-40, near:1, far:160});
+    scene.add(sun, sun.target);
+    dyn = new THREE.Group(); scene.add(dyn);
+    ps = createParticles(scene, 500);
+    for(let i=0;i<60;i++){ const lf = new THREE.Mesh(G.leaf, pick(MAT.leafFall)); lf.userData = {ph:R()*TAU, sp:0.5 + R()*0.6}; lf.position.set(R()*L, R()*10, (R()-.5)*30); scene.add(lf); leaves.push(lf); }
+    new ResizeObserver(resize).observe(stage); resize();
+    let last = performance.now();
+    (function loop(now){
+      const dt = Math.min(0.05, (now - last)/1000); last = now;
+      tick(dt); requestAnimationFrame(loop);
+    })(last);
+    return true;
+  }
+  function resize(){
+    const s = $('#stage'), w = s.clientWidth, h = s.clientHeight;
+    if(!w || !h) return;
+    renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
+  }
+
+  function burstConfetti(cx, cz){
+    clearConfetti();
+    for(let i=0;i<220;i++){
+      const m = new THREE.Mesh(G.confetti, pick(MAT.confetti));
+      m.position.set(cx + (R()-.5)*12, 8 + R()*10, cz + (R()-.5)*12);
+      m.rotation.set(R()*TAU, R()*TAU, 0);
+      m.userData = {vy:-(1.5+R()*2), sx:(R()-.5)*4, sy:(R()-.5)*4, ph:R()*TAU};
+      scene.add(m); confetti3.push(m);
+    }
+  }
+  function clearConfetti(){ confetti3.forEach(m => scene.remove(m)); confetti3 = []; }
+
+  function moveCam(pos, look, dt, k=3.5){
+    if(camCut){ camPos.copy(pos); camLook.copy(look); camCut = false; }
+    else { const a = 1 - Math.exp(-k*dt); camPos.lerp(pos, a); camLook.lerp(look, a); }
+    camera.position.copy(camPos);
+    if(shake > 0.001){ camera.position.x += (R()-.5)*shake; camera.position.y += (R()-.5)*shake; shake *= Math.exp(-dt*6); }
+    camera.lookAt(camLook);
+  }
+  function speedAt(pl, t){
+    let acc = 0;
+    for(let i=0;i<pl.n;i++){
+      if(i === pl.pauseAt){ if(t < acc + pl.pause) return 0; acc += pl.pause; }
+      if(t < acc + pl.durs[i]) return (L/pl.n)/pl.durs[i];
+      acc += pl.durs[i];
+    }
+    return 0;
+  }
+  function metrics(){
+    let lead = -1e9, leadZ = 0, sum = 0, n = 0;
+    runners.forEach(d => { if(d.x > lead){ lead = d.x; leadZ = d.z; } sum += d.x; n++; });
+    return {lead: n ? lead : 0, leadZ, center: n ? sum/n : 0};
+  }
+  function shotFor(shot, m){
+    switch(shot){
+      case 'side':  return [V(m.lead-3, 2.8, W/2+8), V(m.center+1, 0.8, 0)];
+      case 'front': return [V(m.lead+10, 2.2, m.leadZ*0.3+2.5), V(m.lead-3, 1.0, 0)];
+      case 'top':   return [V(m.center, 24, 7), V(m.center+3, 0, 0)];
+      case 'pov':   return [V(m.lead-4.5, 2.0, m.leadZ+0.01), V(m.lead+6, 1.2, m.leadZ)];
+      case 'finish':return [V(L+1.5, 2.6, W/2+6), V(L-4, 0.9, 0)];
+      default:      return [V(m.center-13, 7.5, W*0.35+5), V(m.center+7, 0.7, 0)];
+    }
+  }
+  const STUCK_SPIN = ['branch','pinecone','wind'], HOP = ['log','hedgehog','bush','root','rock','mushroom'];
+
+  function updateRace(dt){
+    const Rc = race; if(Rc.done) return;
+    Rc.real += dt; Rc.rt += dt*Rc.ts;
+    Rc.field.forEach(mb => {
+      const pl = Rc.plans.get(mb.id), st = progressAt(pl, Rc.rt), d = runners.get(mb.id);
+      const x = st.done ? L + (Rc.rt - pl.T)*2.2 : st.p*L;
+      d.moving = x > d.x + 1e-4;
+      d.x = x; d.stuck = !!st.stuck; d.kind = pl.obst[0];
+      if(d.obst && d.obst.st < 0 && x > d.obst.x - 16) d.obst.trigger();
+      if(st.stuck && !Rc.stuckSeen.has(mb.id)){
+        Rc.stuckSeen.add(mb.id); say(obstText(pl.obst[1], mb.name));
+        dust(ps, x+1, d.cls === 'bird' ? 1.8 : 0.3, d.z, 22, 2.5, d.kind === 'mud' ? '#6b4a2a' : '#c9a77c'); shake = Math.max(shake, 0.45); sfx('bonk');
+      }
+      const sp = st.done ? 0 : speedAt(pl, Rc.rt), avg = L/(pl.T - pl.pause);
+      d.speed = sp;
+      const boost = sp > avg*1.3;
+      if(boost && !d.boost && Rc.real - Rc.lastBoost > 2.2 && !Rc.finishCam){ Rc.lastBoost = Rc.real; say(pick(BOOSTS).replace('{n}', mb.name)); sfx('whoosh'); }
+      d.boost = boost;
+      if(st.done && !Rc.finished.includes(mb.id)){
+        Rc.finished.push(mb.id);
+        if(Rc.finished.length === 1){ say(`🏁 ${mb.name} fliegt über die Ziellinie!`); dust(ps, L, 0.3, d.z, 30, 3); }
+      }
+      d.emitT = (d.emitT || 0) - dt;
+      if(d.moving && d.emitT <= 0){
+        emitTrail(ps, d.look.trail, x-0.9, d.trailY(), d.z, time, 0, d.cls);
+        if(d.boost && d.cls !== 'bird') dust(ps, x-0.6, 0.1, d.z + (R()<.5?-.4:.4), 2, 1.6);
+        d.emitT = d.boost ? 0.025 : 0.05;
+      }
+    });
+    const m = metrics(); let leadId = null, best = -1;
+    runners.forEach((d, id) => { if(d.x > best){ best = d.x; leadId = id; } });
+    if(Rc.leader === null) Rc.leader = leadId;
+    else if(Rc.field.length > 1 && leadId !== Rc.leader && Rc.rt > 1.2 && Rc.rt - Rc.lastLead > 1.3 && best < L*0.97){
+      Rc.leader = leadId; Rc.lastLead = Rc.rt; say(pick(LEADS).replace('{n}', M(leadId).name));
+    }
+    const wp = progressAt(Rc.plans.get(Rc.winner.id), Rc.rt).p;
+    if(!Rc.finishCam && wp > 0.93){ Rc.finishCam = true; Rc.ts = 0.3; Rc.shot = 'finish'; camCut = true; $('#slowmo').hidden = false; Music.slow(); }
+    if(Rc.finished.length && Rc.slowEnd === null){ Rc.slowEnd = Rc.real; Music.stop(); }
+    if(Rc.slowEnd !== null && Rc.real - Rc.slowEnd > 0.8 && Rc.ts < 1){ Rc.ts = 1; $('#slowmo').hidden = true; }
+    if(!Rc.finishCam && Rc.real - Rc.shotAt > 3.2){
+      Rc.shotIdx = (Rc.shotIdx + 1) % Rc.shots.length; Rc.shot = Rc.shots[Rc.shotIdx]; Rc.shotAt = Rc.real; camCut = true;
+    }
+    Rc.hudT -= dt;
+    if(Rc.hudT <= 0){
+      Rc.hudT = 0.15;
+      const order = [...Rc.field].sort((a,b) => {
+        const fa = Rc.finished.indexOf(a.id), fb = Rc.finished.indexOf(b.id);
+        if(fa >= 0 || fb >= 0) return (fa < 0 ? 99 : fa) - (fb < 0 ? 99 : fb);
+        return runners.get(b.id).x - runners.get(a.id).x;
+      });
+      $('#ranking').innerHTML = order.map((mb,i) => `<li><b>${i+1}.</b><span class="dot" style="background:${uiColor(mb)}"></span>${esc(mb.name)}${Rc.finished.includes(mb.id)?' 🏁':''}</li>`).join('');
+    }
+    const [p, l] = shotFor(Rc.shot, m); moveCam(p, l, dt, Rc.shot === 'finish' ? 2 : 3.5);
+    if(Rc.rt >= Rc.endT){ Rc.done = true; $('#slowmo').hidden = true; Rc.resolve(Rc.finished); }
+  }
+
+  function poseRunner(d, dt){
+    const inn = d.inner; inn.position.x = 0;
+    let y = 0, rz = 0;
+    if(d.obst && HOP.includes(d.obst.kind) && !d.stuck && d.cls !== 'bird'){
+      const u = (d.x - (d.obst.x - 2.6)) / 3.8; if(u > 0 && u < 1) y = Math.sin(u*Math.PI)*(d.cls === 'fish' ? 0.6 : 1.2);
+    }
+    if(d.stuck){
+      if(STUCK_SPIN.includes(d.kind)) inn.rotation.y += dt*12;
+      else if(d.kind === 'mushroom') y = Math.abs(Math.sin(time*7))*1.4;
+      else if(d.kind === 'mud'){ y = -0.12; rz = Math.sin(time*25)*0.12; }
+      else if(d.kind === 'web') rz = Math.sin(time*9)*0.25;
+      else rz = Math.sin(time*35)*0.2;
+    }
+    if(!(d.stuck && STUCK_SPIN.includes(d.kind))){ let ry = ((inn.rotation.y % TAU) + TAU) % TAU; if(ry > Math.PI) ry -= TAU; inn.rotation.y = ry*(1 - Math.min(1, dt*6)); }
+    inn.position.y = y;
+    const lean = mode === 'race' ? (d.boost ? -0.12 : -0.03) : 0;
+    inn.rotation.z = rz + lean;
+  }
+
+  function tick(dt){
+    time += dt;
+    if(!renderer || !world || !$('#stage').clientWidth) return;
+    clouds.forEach((c,i) => { c.position.x += dt*(0.6 + i%3*0.2); if(c.position.x > L+90) c.position.x = -70; });
+    if(mode === 'race' && race) updateRace(dt);
+
+    const racing3 = mode === 'race' && race && !race.done;
+    runners.forEach((d, id) => {
+      d.group.position.set(d.x, 0, d.z);
+      const dancing = mode === 'celebrate' && id === celebrateId;
+      const st = {
+        moving: dancing || (racing3 && d.moving && !d.stuck),
+        speed: dancing ? 10 : (d.speed || 10), stuck: d.stuck, x: d.x,
+        fly: dancing || mode === 'race'
+      };
+      d.anim(time, dt, st);
+      if(dancing){ applyDance(d, d.look.dance, celebrateT, dt, ps); return; }
+      poseRunner(d, dt);
+    });
+    obstacles.forEach(o => o.update(time, dt));
+    spectators.forEach(d => {
+      const cheer = mode === 'celebrate' || (race && race.finishCam);
+      d.anim(time, dt, {moving:false, fly:false, x:0});
+      d.inner.position.y = cheer ? Math.abs(Math.sin(time*8 + d.ph))*0.9 : 0;
+    });
+    ps.update(dt);
+    leaves.forEach(lf => {
+      const u = lf.userData; lf.position.y -= dt*u.sp; lf.position.x += Math.sin(time*1.3 + u.ph)*dt*0.6; lf.rotation.x += dt*1.5; lf.rotation.z += dt*u.sp;
+      if(lf.position.y < 0.05){ lf.position.set(camLook.x + (R()-.5)*30, 7 + R()*5, camLook.z + (R()-.5)*24); }
+    });
+    confetti3.forEach(m => {
+      const u = m.userData; m.position.y += u.vy*dt; m.position.x += Math.sin(time*2 + u.ph)*dt*0.8;
+      m.rotation.x += u.sx*dt; m.rotation.y += u.sy*dt; if(m.position.y < 0.1) m.position.y = 0.1;
+    });
+
+    const m = metrics();
+    if(mode === 'idle'){
+      const ang = 0.85 + Math.sin(time*0.18)*0.45, Rr = 21;
+      moveCam(V(3 + Math.sin(ang)*Rr, 7.5, Math.cos(ang)*Rr), V(2, 0.8, 0), dt, 1.5);
+    } else if(mode === 'intro'){
+      introT += dt; const u = Math.min(1, introT/2.4), e = u*u*(3-2*u);
+      const from = [V(12, 2.2, 0.01), V(0, 1.2, 0)], to = [V(-13, 7.5, W*0.35+5), V(7, 0.7, 0)];
+      camCut = true; moveCam(from[0].lerp(to[0], e), from[1].lerp(to[1], e), dt);
+    } else if(mode === 'celebrate'){
+      celebrateT += dt;
+      const d = runners.get(celebrateId);
+      if(d){ const ang = celebrateT*0.6 + 0.9, y = d.inner.position.y*0.6 + (d.cls === 'bird' ? 1 : 0);
+        moveCam(V(d.x + Math.sin(ang)*7, 3.4 + y, d.z + Math.cos(ang)*7), V(d.x, 1.4 + y, d.z), dt, 2.5); }
+    }
+    const cx = mode === 'idle' ? 6 : m.center;
+    sun.position.set(cx - 25, 45, 30); sun.target.position.set(cx, 0, 0);
+    renderer.render(scene, camera);
+  }
+
+  /* ---------- Garderoben-Vorschau ---------- */
+  function createPreview(el){
+    const rend = new THREE.WebGLRenderer({antialias:true});
+    rend.setPixelRatio(Math.min(devicePixelRatio, 2)); rend.shadowMap.enabled = true; rend.shadowMap.type = THREE.PCFSoftShadowMap;
+    el.prepend(rend.domElement);
+    const env = makeEnv(rend), sc = new THREE.Scene();
+    sc.background = new THREE.Color('#a8dcf0'); sc.fog = new THREE.Fog('#b9e0d2', 14, 40);
+    const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    sc.add(new THREE.HemisphereLight('#fff6e0', '#4a6b2a', 0.85));
+    const dl = new THREE.DirectionalLight('#fff1d0', 1); dl.position.set(4,8,5); dl.castShadow = true; dl.shadow.mapSize.set(1024,1024); sc.add(dl);
+    const gr = new THREE.Mesh(new THREE.CircleGeometry(40, 48), MAT.grass); gr.rotation.x = -Math.PI/2; gr.receiveShadow = true; sc.add(gr);
+    const pth = new THREE.Mesh(new THREE.PlaneGeometry(40, 3.4), std('#b8905c',{roughness:1})); pth.rotation.x = -Math.PI/2; pth.position.y = 0.01; pth.receiveShadow = true; sc.add(pth);
+    const r = mulberry32(3);
+    for(let i=0;i<16;i++){ const t = makeTree(r), a = r()*TAU, d = 7 + r()*8; t.position.set(Math.cos(a)*d, 0, Math.sin(a)*d); if(Math.abs(t.position.z) > 3) sc.add(t); }
+    for(let i=0;i<14;i++){ const f = makeFern(r); f.position.set((r()-.5)*14, 0, (r()<.5?-1:1)*(2.2 + r()*3)); sc.add(f); }
+    const pp = createParticles(sc, 180);
+    let a = null, danceT = -1, t = 0, emitT = 0, xx = 0, last = performance.now();
+    function resizeP(){ const w = el.clientWidth, h = el.clientHeight; if(!w || !h) return; rend.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix(); }
+    new ResizeObserver(resizeP).observe(el); resizeP();
+    (function loop(now){
+      const dt = Math.min(0.05, (now - last)/1000); last = now;
+      requestAnimationFrame(loop);
+      if(!el.clientWidth || !a) return;
+      t += dt;
+      const running = danceT < 0 && (t % 8) < 5;
+      if(running) xx += dt*9;
+      a.anim(t, dt, {moving: running || danceT >= 0, speed:9, x:xx, fly: running || danceT >= 0});
+      if(danceT >= 0){ danceT += dt; applyDance(a, a.look.dance, danceT, dt, pp); if(danceT > 4){ danceT = -1; a.inner.position.set(0,0,0); a.inner.rotation.set(0,0,0); } }
+      else {
+        a.inner.position.set(0,0,0); a.inner.rotation.z = running ? -0.04 : 0;
+        let ry = ((a.inner.rotation.y % TAU) + TAU) % TAU; if(ry > Math.PI) ry -= TAU; a.inner.rotation.y = ry*(1 - Math.min(1, dt*6));
+        emitT -= dt; if(running && emitT <= 0){ emitTrail(pp, a.look.trail, -0.9, a.trailY(), 0, t, 2.5, a.cls); emitT = 0.05; }
+      }
+      pp.update(dt);
+      const ang = t*0.3 + 0.8, y = a.inner.position.y + (a.cls === 'bird' ? 0.8 : 0);
+      cam.position.set(Math.sin(ang)*6.5, 2.8 + y*0.7, Math.cos(ang)*6.5); cam.lookAt(0, 1.1 + y*0.8, 0);
+      rend.render(sc, cam);
+    })(last);
+    return {
+      set(animal, look, name){ if(a) sc.remove(a.group); a = buildAnimal(animal, look, name, env); sc.add(a.group); danceT = -1; },
+      dance(){ danceT = 0; }
+    };
+  }
+
+  /* ---------- Porträts für die Listen (einmal gerendert, dann gecacht) ---------- */
+  let pR = null, pEnv = null, pScene = null, pCam = null; const pCache = new Map();
+  function portrait(animal, look){
+    const key = animal + JSON.stringify(look || {});
+    if(pCache.has(key)) return pCache.get(key);
+    try{
+      if(!pR){
+        pR = new THREE.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true}); pR.setSize(160, 160, false); pR.setClearColor(0x000000, 0);
+        pEnv = makeEnv(pR); pScene = new THREE.Scene();
+        pScene.add(new THREE.HemisphereLight('#fff6e0', '#4a6b2a', 0.9));
+        const dl = new THREE.DirectionalLight('#fff1d0', 0.9); dl.position.set(4,6,5); pScene.add(dl);
+        pCam = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+      }
+      const a = buildAnimal(animal, look, null, pEnv); pScene.add(a.group);
+      a.anim(0, 0, {moving:false, fly:false, x:0});
+      const pt = a.b.portrait, tg = pt.target.clone();
+      if(look && look.hat && look.hat !== 'none') tg.y += 0.15;
+      pCam.position.set(tg.x + pt.dist*0.8, tg.y + pt.dist*0.15, tg.z + pt.dist*0.6); pCam.lookAt(tg);
+      pR.render(pScene, pCam);
+      const url = pR.domElement.toDataURL();
+      pScene.remove(a.group);
+      pCache.set(key, url); return url;
+    }catch(e){ return null; }
+  }
+
+  return {
+    ok: init(),
+    setField(field, plans){
+      const key = field.map(m => m.id + m.animal + m.name + JSON.stringify(lookOf(m))).join('|');
+      if(!plans && key === fieldKey && mode === 'idle') return;
+      fieldKey = plans ? '' : key;
+      const cnt = Math.max(field.length, 1);
+      if(cnt !== nLanes || !world) buildWorld(cnt);
+      runners.forEach(d => { dyn.remove(d.group); if(d.label){ d.label.material.map.dispose(); d.label.material.dispose(); } });
+      runners.clear();
+      obstacles.forEach(o => dyn.remove(o.g)); obstacles = [];
+      field.forEach((mb, i) => {
+        const z = (i - (field.length-1)/2)*LANE, d = buildAnimal(mb.animal, lookOf(mb), mb.name, ENV);
+        d.z = z; d.x = 0; d.group.position.set(0, 0, z); dyn.add(d.group); runners.set(mb.id, d);
+        const pl = plans && plans.get(mb.id);
+        if(pl && pl.pauseAt >= 0){ const o = makeObstacle(pl.obst[0], pl.pauseAt/pl.n*L + 1.7, z); d.obst = o; obstacles.push(o); dyn.add(o.g); }
+      });
+      if(!plans){ mode = 'idle'; race = null; celebrateId = null; camCut = true; clearConfetti(); }
+    },
+    intro(){ mode = 'intro'; introT = 0; clearConfetti(); },
+    race(field, plans, winner){
+      return new Promise(resolve => {
+        const T = [...plans.values()].map(p => p.T).sort((a,b) => a-b);
+        race = {field, plans, winner, resolve, rt:0, real:0, ts:1, finished:[], stuckSeen:new Set(), leader:null, lastLead:0, lastBoost:0,
+          finishCam:false, slowEnd:null, shots:['chase','side','pov','top','front'], shotIdx:0, shot:'chase', shotAt:0, hudT:0,
+          endT: Math.min(T[T.length-1], T[0] + 2.4) + 0.4, done:false};
+        mode = 'race'; camCut = true;
+      });
+    },
+    celebrate(id){
+      mode = 'celebrate'; celebrateId = id; celebrateT = 0; camCut = true;
+      const d = runners.get(id);
+      if(d){ burstConfetti(d.x, d.z); dust(ps, d.x, 0.3, d.z, 30, 4); for(let i=0;i<30;i++) emitTrail(ps, d.look.trail, d.x+(R()-.5)*2, 0.3, d.z+(R()-.5)*2, time, 0, d.cls); }
+    },
+    skip(){
+      if(!race || race.done || mode !== 'race') return;
+      race.finished = [...race.field].sort((a,b) => race.plans.get(a.id).T - race.plans.get(b.id).T)
+        .filter(m => race.plans.get(m.id).T <= race.endT).map(m => m.id);
+      race.finishCam = true; race.shot = 'finish'; race.slowEnd = 0; race.ts = 1; camCut = true;
+      race.rt = race.endT - 0.05;
+    },
+    refreshLabels(){ fieldKey = ''; pCache.clear(); },
+    createPreview, portrait
+  };
+})();
+const HAS3D = !!(R3 && R3.ok);
+if(!HAS3D) $('#stage').insertAdjacentHTML('afterbegin', '<div class="no3d">Die 3D-Ansicht braucht WebGL und eine Internetverbindung (three.js). Das Rennen wird ohne Animation ausgelost.</div>');
+
+/* ---------- Tabs ---------- */
+let currentTab = 'race';
+function showTab(t){
+  currentTab = t;
+  ['race','reviews','board','wardrobe','team'].forEach(x => $('#tab-'+x).hidden = x!==t);
+  document.querySelectorAll('nav [data-act=tab]').forEach(b => b.classList.toggle('active', b.dataset.id===t));
+  renderAll();
+}
+
+/* ---------- Render: Rennen ---------- */
+function renderRaceForm(){
+  const a = $('#prAuthor'), cur = a.value;
+  a.innerHTML = `<option value="">— niemand aus dem Team —</option>` + S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  if(S.members.some(m=>m.id===cur)) a.value = cur;
+  const s = $('#prSize');
+  if(!s.options.length){ s.innerHTML = Object.entries(SIZES).map(([k,v])=>`<option value="${k}">${v.name} (${v.xp} XP)</option>`).join(''); s.value='M'; }
+}
+function renderField(){
+  const author = $('#prAuthor').value;
+  const el = eligible(author), sum = el.reduce((a,m)=>a+weightOf(m),0);
+  $('#field').innerHTML = S.members.map(m=>{
+    const out = m.away ? '🏖️ abwesend' : m.id===author ? '✍️ Autor:in' : '';
+    const pc = out ? 0 : Math.round(weightOf(m)/sum*100);
+    const ol = openLoad(m);
+    return `<div class="runner ${out?'out':''}">
+      ${avatar(m)}
+      <span class="nm">${esc(m.name)}${hatIcon(m)}</span>
+      ${m.pct<100?`<span class="chip">${m.pct} %</span>`:''}
+      ${ol?`<span class="chip">${ol} offen</span>`:''}
+      ${out?`<span class="chip" style="margin-left:auto">${out}</span>`:`
+        <span class="bar"><i style="width:${pc}%;background:${uiColor(m)}"></i></span>
+        <span class="pc">${pc} %</span>`}
+    </div>`;
+  }).join('') || '<div class="empty">Noch keine Tiere. Ab in den Team-Tab!</div>';
+  if(!racing && !pendingResult && !derby && HAS3D) R3.setField(el, null);
+  renderPond();
+}
+
+/* ---------- Laubhaufen (Warteliste) ---------- */
+const pondPrs = () => S.prs.filter(p => p.status === 'pond').sort((a,b) => a.createdAt - b.createdAt);
+function claimBonus(pr){ return Math.min(30, 10 + Math.floor((Date.now() - pr.createdAt)/(4*HOUR))*5); }
+function renderPond(){
+  const list = pondPrs();
+  $('#pond').innerHTML = list.map(p => {
+    const who = S.members.filter(m => !m.away && m.id !== p.author);
+    return `<div class="pondItem">
+      <div>
+        <div class="title"><span class="badge">${p.size}</span>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title)}</a>`:esc(p.title)}</div>
+        <div class="meta">${p.author&&M(p.author)?`von ${esc(M(p.author).name)} · `:''}seit ${fmtDur(Date.now()-p.createdAt)} auf dem Laubhaufen · <span class="bonus">🙋 +${claimBonus(p)} XP</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn-small btn-good" data-act="claimOpen" data-id="${p.id}" ${racing||!who.length?'disabled':''} title="Jemand übernimmt den PR freiwillig">🙋 Übernehmen</button>
+        <button class="btn-small" data-act="instantPond" data-id="${p.id}" ${racing?'disabled':''} title="Nicht aufs Daily warten: jetzt ein Rennen nur für diesen PR">🎲 Jetzt auslosen</button>
+        <button class="btn-small" data-act="delPr" data-id="${p.id}" ${racing?'disabled':''} title="Vom Laubhaufen entfernen">🗑️</button>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">Der Laubhaufen ist leer. Neue PRs links eintragen 🌿</div>';
+  const n = list.length;
+  $('#derbyBtn').disabled = racing || !n;
+  $('#derbyBtn').textContent = n ? `🏁 Daily Derby starten (${n} ${n===1?'Lauf':'Läufe'})` : '🏁 Daily Derby starten';
+  $('#derbyHint').textContent = n ? 'Am besten direkt nach dem Daily, mit geteiltem Bildschirm. Jeder PR auf dem Laubhaufen bekommt einen eigenen Lauf.' : '';
+  const rb = document.querySelector('nav [data-id=race]'); rb.textContent = n ? `🏁 Rennen (🍂 ${n})` : '🏁 Rennen';
+}
+
+/* ---------- Rennlogik ---------- */
+let racing = false;
+function makePlan(T, isWinner, cls='quad'){
+  const n = 10;
+  const w = Array.from({length:n}, () => 0.55 + Math.random()*1.0);
+  if(isWinner && Math.random() < 0.6) for(let i=0;i<4;i++) w[i] *= 1.5;   // Comeback-Dramaturgie
+  let pause = 0, pauseAt = -1;
+  if(Math.random() < 0.55){ pause = 0.7 + Math.random()*1.1; pauseAt = 2 + Math.floor(Math.random()*6); }
+  const sum = w.reduce((a,b)=>a+b,0), scale = (T - pause)/sum;
+  return {n, T, pause, pauseAt, durs:w.map(x=>x*scale), obst:pick(OBST[cls] || OBST.quad)};
+}
+function progressAt(pl, t){
+  let acc = 0;
+  for(let i=0;i<pl.n;i++){
+    if(i === pl.pauseAt){ if(t < acc + pl.pause) return {p:i/pl.n, stuck:true}; acc += pl.pause; }
+    if(t < acc + pl.durs[i]) return {p:(i + (t-acc)/pl.durs[i])/pl.n};
+    acc += pl.durs[i];
+  }
+  return {p:1, done:true};
+}
+function say(msg){
+  const t = $('#ticker');
+  t.insertAdjacentHTML('afterbegin', `<li>${esc(msg)}</li>`);
+  while(t.children.length > 4) t.lastChild.remove();
+}
+async function countdown(){
+  const c = $('#countdown');
+  for(const x of ['3','2','1','LOS!']){
+    c.textContent = x; c.classList.remove('go'); c.offsetHeight; c.classList.add('go');
+    if(x==='LOS!') whistle(); else beep();
+    await sleep(x==='LOS!' ? 500 : 640);
+  }
+  c.textContent = '';
+}
+function readPrForm(){
+  return { id:uid(), title:$('#prTitle').value.trim() || 'Unbenannter PR', url:safeUrl($('#prUrl').value.trim()),
+           author:$('#prAuthor').value, size:$('#prSize').value, createdAt:Date.now(), status:'pond', claimed:false };
+}
+function clearPrForm(){ $('#prTitle').value=''; $('#prUrl').value=''; }
+function exitCinema(){ $('#stage').classList.remove('cinema'); $('#ranking').innerHTML=''; $('#skipBtn').hidden = true; $('#heatCard')?.remove(); Music.stop(); }
+
+/* Daily Derby: ein Lauf pro PR auf dem Laubhaufen, danach Zusammenfassung */
+let derby = null;
+async function showHeatCard(lines, ms){
+  $('#heatCard')?.remove();
+  $('.hud').insertAdjacentHTML('beforeend', `<div id="heatCard">${lines}</div>`);
+  await sleep(ms); $('#heatCard')?.remove();
+}
+function startDerby(){
+  const list = pondPrs();
+  if(!list.length || racing) return;
+  derby = {queue:[...list], total:list.length, results:[]};
+  nextHeat();
+}
+function nextHeat(){
+  let pr = derby.queue.shift();
+  while(pr && pr.status !== 'pond'){ toast(`„${pr.title}“ wurde inzwischen schon übernommen und wird übersprungen.`); pr = derby.queue.shift(); }
+  if(!pr){ showSummary(); return; }
+  startRace(pr);
+}
+function heatLabel(){ return derby ? `Lauf ${derby.total - derby.queue.length} von ${derby.total}` : 'Sofort-Rennen'; }
+
+async function startRace(pr, excluded=[]){
+  const field = eligible(pr.author, excluded);
+  if(!field.length){
+    toast(`Keine Läufer:innen für „${pr.title}“ 😢 Alle sind abwesend, Autor:in oder haben einen Joker gezogen. Der PR bleibt auf dem Laubhaufen.`);
+    if(derby){ derby.results.push({pr, winner:null}); setTimeout(nextHeat, 1500); } else { exitCinema(); renderAll(); }
+    return;
+  }
+  racing = true; renderField();
+  const winner = weightedPick(field);
+  if(!HAS3D){ racing = false; quack(3); confetti(); showResult(pr, winner, excluded); return; }
+
+  const WT = 10 + Math.random()*2.5;
+  let close = Math.random() < 0.5;
+  const plans = new Map(), Ts = [];
+  field.forEach(m => {
+    let T = WT;
+    if(m !== winner){ T = WT + (close ? 0.12 + Math.random()*0.3 : 0.4 + Math.random()*2.6); close = false; }
+    Ts.push(T); plans.set(m.id, makePlan(T, m===winner, clsOf(m)));
+  });
+  $('#stage').classList.add('cinema');
+  $('#hudTitle').textContent = `${heatLabel()} · ${pr.title}`;
+  $('#ticker').innerHTML = '';
+  R3.setField(field, plans);
+  R3.intro();
+  const author = pr.author && M(pr.author);
+  await showHeatCard(`<div class="h3">${heatLabel()}${excluded.length?' · 🃏 Neustart':''}</div><div class="h1">🌲 ${esc(pr.title)}</div>
+    <div class="h2"><span class="badge">${SIZES[pr.size].name}</span>${author?` von ${esc(author.name)}`:''}</div>`, 1800);
+  say(`🐾 ${field.length} ${field.length===1?'Tier steht':'Tiere stehen'} an der Startlinie!`);
+  await countdown();
+  Music.start();
+  $('#skipBtn').hidden = false;
+  const sorted = [...Ts].sort((a,b)=>a-b);
+  const fotoT = sorted.length>1 && sorted[1]-sorted[0] < 0.45 ? setTimeout(()=>say('📸 Fotofinish! Das wird knapp!'), (WT-2.2)*1000) : null;
+  await R3.race(field, plans, winner);
+  clearTimeout(fotoT); Music.stop(); $('#skipBtn').hidden = true;
+  quack(3); cheer();
+  R3.celebrate(winner.id);
+  say(`🏆 ${winner.name} gewinnt und reviewt!`);
+  await sleep(2400);
+  racing = false;
+  showResult(pr, winner, excluded);
+}
+
+function showSummary(){
+  const res = derby.results;
+  const lines = res.map(r => r.winner
+    ? `<div>${avatar(r.winner)}<span><b>${esc(r.winner.name)}</b> → ${esc(r.pr.title)}</span></div>`
+    : `<div><span style="width:36px;text-align:center">🍂</span><span class="muted">${esc(r.pr.title)}: niemand verfügbar, bleibt auf dem Laubhaufen</span></div>`).join('');
+  openModal(`<h3>🏁 Daily Derby vorbei!</h3>
+    <div class="summary">${lines}</div>
+    <div class="btns"><button data-act="copySummary">📋 Für Teams kopieren</button><button class="btn-good" data-act="endDerby">✅ Fertig</button></div>`);
+  quack(2); confetti();
+}
+function summaryText(){
+  const d = new Date().toLocaleDateString('de-DE');
+  return `🌲 Daily Derby ${d}\n` + derby.results.filter(r => r.winner)
+    .map(r => `• ${r.pr.title}${r.pr.url ? ' (' + r.pr.url + ')' : ''} → ${r.winner.name}`).join('\n')
+    + `\n⚡ Unter 4 Std erledigt gibt's +15 XP Speed-Bonus!`;
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true; }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); let ok = false; try{ ok = document.execCommand('copy'); }catch(_){} ta.remove(); return ok;
+  }
+}
+
+function showResult(pr, winner, excluded){
+  const base = SIZES[pr.size].xp;
+  pendingResult = {pr, winner, excluded};
+  openModal(`
+    ${avatar(winner,'big')}
+    <h3>🏆 ${esc(winner.name)} reviewt!</h3>
+    <div class="muted">${esc(pr.title)} · ${SIZES[pr.size].name}</div>
+    <div class="breakdown">
+      <div><span>Basis</span><span>${base} XP</span></div>
+      <div class="bonus"><span>⚡ Erledigt in &lt; 4 Std</span><span>+15 XP</span></div>
+      <div class="bonus"><span>💛 Autor:in findet's hilfreich</span><span>+10 XP</span></div>
+    </div>
+    <div class="btns">
+      <button class="btn-good" data-act="accept">✅ Mach ich!</button>
+      <button data-act="joker" ${winner.jokers>0?'':'disabled'}>🃏 Joker einsetzen (${winner.jokers})</button>
+    </div>`);
+}
+let pendingResult = null;
+
+/* ---------- Belohnungen ---------- */
+function bountyNow(pr){
+  const h = (Date.now() - pr.assignedAt)/HOUR;
+  return h < 24 ? 0 : Math.min(50, 10 + Math.floor((h-24)/12)*5);
+}
+function rewardFor(pr, kudos){
+  const parts = [['Basis ('+pr.size+')', SIZES[pr.size].xp]];
+  if(pr.claimed) parts.push(['🙋 Freiwillig genommen', pr.claimBonus ?? 10]);
+  if(pr.stolen) parts.push(['🏴‍☠️ Kopfgeld', pr.bounty]);
+  else {
+    const h = (Date.now() - pr.assignedAt)/HOUR;
+    if(h < 4) parts.push(['⚡ Speed-Bonus (< 4 Std)', 15]);
+    else if(h < 24) parts.push(['⏱️ Gleicher Tag (< 24 Std)', 5]);
+  }
+  if(kudos) parts.push(['💛 Hilfreich-Kudos', 10]);
+  return {parts, total: parts.reduce((a,p)=>a+p[1],0)};
+}
+function award(m, xp, kudos){
+  const lvlBefore = level(m.totalXp);
+  m.seasonXp += xp; m.totalXp += xp; m.seasonReviews++; m.totalReviews++;
+  m.history.push(Date.now()); m.history = m.history.filter(t => Date.now()-t < 60*DAY);
+  if(kudos) m.kudos++;
+  const msgs = [];
+  if(m.totalReviews % 5 === 0 && m.jokers < 3){ m.jokers++; msgs.push(`🃏 ${m.name} bekommt einen neuen Joker!`); }
+  const lvlAfter = level(m.totalXp);
+  if(lvlAfter > lvlBefore){
+    msgs.push(`⭐ LEVEL UP! ${m.name} ist jetzt Level ${lvlAfter}: ${titleOf(lvlAfter)}`);
+    const neu = unlocksBetween(lvlBefore, lvlAfter);
+    if(neu.length) msgs.push(`🎁 Neu freigeschaltet: ${neu.map(i => i[2]+' '+i[1]).join(', ')}. Ab in die Garderobe!`);
+  }
+  return msgs;
+}
+
+/* ---------- Render: Reviews ---------- */
+function fmtDur(ms){
+  const m = Math.floor(ms/60000);
+  if(m < 60) return `${m} Min`;
+  const h = Math.floor(m/60);
+  if(h < 48) return `${h} Std`;
+  return `${Math.floor(h/24)} Tagen`;
+}
+function renderReviews(){
+  const open = S.prs.filter(p=>p.status==='open').sort((a,b)=>a.assignedAt-b.assignedAt);
+  $('#openCount').textContent = open.length ? `(${open.length})` : '';
+  $('#openList').innerHTML = open.map(p=>{
+    const r = M(p.reviewer) || {name:'?',color:'#888'};
+    const age = Date.now() - p.assignedAt;
+    const bounty = !p.stolen ? bountyNow(p) : 0;
+    let status;
+    if(p.stolen) status = `<span class="bounty">🏴‍☠️ gekapert von ${esc(M(p.stolenFrom)?.name||'?')} · Kopfgeld +${p.bounty} XP</span>`;
+    else if(age < 4*HOUR) status = `<span class="bonus">⚡ Speed-Bonus aktiv: +15 XP</span>`;
+    else if(age < 24*HOUR) status = `<span class="bonus">⏱️ Same-Day-Bonus aktiv: +5 XP</span>`;
+    else status = `<span class="bounty">🏴‍☠️ KOPFGELD: +${bounty} XP für alle, die übernehmen!</span>`;
+    const pirates = bounty ? S.members.filter(m=>m.id!==p.reviewer && m.id!==p.author && !m.away) : [];
+    return `<div class="pr ${bounty?'pirate':''}">
+      ${avatar(r.id?r:null)}
+      <div>
+        <div class="title"><span class="badge">${p.size}</span>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title)}</a>`:esc(p.title)}</div>
+        <div class="meta">${esc(r.name)}${p.claimed?' 🙋':''} · seit ${fmtDur(age)}${p.author&&M(p.author)?` · von ${esc(M(p.author).name)}`:''}</div>
+        <div class="meta">${status}</div>
+      </div>
+      <div class="actions">
+        ${pirates.length?`<select id="steal-${p.id}">${pirates.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
+          <button class="btn-small" data-act="steal" data-id="${p.id}">🏴‍☠️ Kapern</button>`:''}
+        <button class="btn-good btn-small" data-act="done" data-id="${p.id}">✅ Erledigt</button>
+        <button class="btn-small" data-act="delPr" data-id="${p.id}" title="Ohne XP entfernen">🗑️</button>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">Keine offenen Reviews. Im Wald ist es ruhig 🌿</div>';
+
+  const done = S.prs.filter(p=>p.status==='done').sort((a,b)=>b.doneAt-a.doneAt).slice(0,10);
+  $('#doneList').innerHTML = done.map(p=>{
+    const r = M(p.reviewer) || {name:'?',color:'#888'};
+    return `<div class="pr">${avatar(r.id?r:null)}<div>
+      <div class="title"><span class="badge">${p.size}</span>${esc(p.title)}</div>
+      <div class="meta">${esc(r.name)} · +${p.xp} XP${p.kudos?' · 💛':''} · ${new Date(p.doneAt).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}</div></div></div>`;
+  }).join('') || '<div class="empty">Noch nichts erledigt.</div>';
+}
+
+/* ---------- Render: Bestenliste ---------- */
+function renderBoard(){
+  $('#seasonTitle').textContent = `🏆 Season ${S.seasonNo} · seit ${new Date(S.seasonStart).toLocaleDateString('de-DE')}`;
+  const list = [...S.members].sort((a,b)=>b.seasonXp-a.seasonXp || b.seasonReviews-a.seasonReviews);
+  const medals = ['🥇','🥈','🥉'];
+  $('#board').innerHTML = list.map((m,i)=>{
+    const lv = level(m.totalXp), lo = xpFor(lv), hi = xpFor(lv+1);
+    const pct = Math.round((m.totalXp-lo)/(hi-lo)*100);
+    return `<div class="lb">
+      <div class="rank">${m.seasonXp>0 && medals[i] ? medals[i] : (i+1)+'.'}</div>
+      ${avatar(m)}
+      <div class="info">
+        <div><b>${esc(m.name)}${hatIcon(m)}</b> <span class="chip">Lvl ${lv} · ${titleOf(lv)}</span>${m.away?' 🏖️':''}</div>
+        <div class="stats">${m.seasonReviews} Reviews diese Season · 🃏×${m.jokers} · 💛×${m.kudos}</div>
+        <div class="lvlbar" title="${m.totalXp-lo}/${hi-lo} XP bis Level ${lv+1}"><i style="width:${pct}%"></i></div>
+      </div>
+      <div class="xp">${m.seasonXp}<div class="stats">XP</div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- Render: Garderobe ---------- */
+let wdMemberId = null, wdPeek = null, preview = null;
+function renderWardrobe(){
+  const sel = $('#wdMember');
+  if(!S.members.some(m => m.id === wdMemberId)) wdMemberId = (myMember() || S.members[0])?.id || null;
+  sel.innerHTML = S.members.map(m => `<option value="${m.id}" ${m.id===wdMemberId?'selected':''}>${esc(m.name)}</option>`).join('');
+  const m = M(wdMemberId);
+  if(!m){ $('#wdItems').innerHTML = '<div class="empty">Noch keine Tiere im Team.</div>'; return; }
+  const lv = level(m.totalXp), look = lookOf(m);
+  const animalPicker = `<h3 class="cat">🐾 Tier</h3>
+    <div class="items">${Object.entries(ANIMALS).map(([k,a]) => {
+      const isSel = animalOf(m) === k, url = HAS3D ? R3.portrait(k, look) : null;
+      return `<button class="item animal ${isSel?'sel':''}" data-act="pickAnimal" data-id="${k}" title="${a.name}">
+        ${url ? `<img src="${url}" alt="">` : a.emoji}<span>${a.name}</span><small>${isSel?'✔ ausgewählt':'&nbsp;'}</small></button>`;
+    }).join('')}</div>`;
+  $('#wdItems').innerHTML = animalPicker + Object.keys(UNLOCKS).map(cat => `
+    <h3 class="cat">${CAT_NAMES[cat]}</h3>
+    <div class="items">${UNLOCKS[cat].map(([id,name,icon,need]) => {
+      const locked = need > lv, isSel = look[cat] === id, peek = wdPeek && wdPeek.cat === cat && wdPeek.id === id;
+      return `<button class="item ${isSel?'sel':''} ${locked?'locked':''} ${peek?'peek':''}" data-act="pickItem" data-id="${cat}:${id}" title="${locked?'Ab Level '+need:name}">
+        ${icon}<span>${name}</span><small>${locked?'🔒 Level '+need:(isSel?'✔ ausgewählt':'&nbsp;')}</small></button>`;
+    }).join('')}</div>`).join('');
+  const next = unlocksBetween(lv, 99).sort((a,b) => a[3]-b[3]);
+  const nextLv = next[0]?.[3];
+  const nextItems = next.filter(i => i[3] === nextLv).map(i => i[2]+' '+i[1]).join(', ');
+  const info = !canEdit(m) ? `👀 Du schaust dir das Profil von <b>${esc(m.name)}</b> an. Ändern kann das nur ${esc(m.name)} selbst.` : wdPeek ? `🔒 <b>Nur Vorschau</b>: ab Level ${wdPeek.need}` :
+    `Level <b>${lv}</b> · ${titleOf(lv)}` + (nextLv ? ` · Nächste Belohnung bei Level ${nextLv} (noch ${xpFor(nextLv)-m.totalXp} XP): ${nextItems}` : ' · Alles freigeschaltet! 👑');
+  $('#wdInfo').innerHTML = info;
+  if(HAS3D){
+    if(!preview) preview = R3.createPreview($('#wdStage'));
+    const pl = Object.assign({}, look); if(wdPeek) pl[wdPeek.cat] = wdPeek.id;
+    const key = m.id + m.animal + JSON.stringify(pl);
+    if(preview.key !== key){ preview.key = key; preview.set(animalOf(m), pl, m.name); }
+  }
+}
+
+/* ---------- Render: Team ---------- */
+function renderTeam(){
+  $('#teamBody').innerHTML = S.members.map(m=>`<tr>
+    <td>${avatar(m)}</td>
+    <td><input value="${esc(m.name)}" data-field="name" data-id="${m.id}" ${canEdit(m)?'':'readonly title="Nur die Person selbst kann ihren Namen ändern"'}>${me && me.id===m.id?' <span class="chip">du</span>':''}</td>
+    <td><input type="number" min="10" max="100" step="10" value="${m.pct}" data-field="pct" data-id="${m.id}"></td>
+    <td><input type="checkbox" ${m.away?'checked':''} data-field="away" data-id="${m.id}" style="width:22px;height:22px"></td>
+    <td>${m.jokers}</td>
+    <td><button class="btn-small" data-act="delMember" data-id="${m.id}">🗑️</button></td>
+  </tr>`).join('');
+}
+
+function renderAll(){
+  renderRaceForm(); renderField(); renderReviews();
+  if(currentTab==='board') renderBoard();
+  if(currentTab==='team') renderTeam();
+  if(currentTab==='wardrobe') renderWardrobe();
+  $('#soundBtn').textContent = soundOn ? '🔊' : '🔇';
+  renderMe();
+}
+
+/* ---------- Modal / Toast / FX ---------- */
+function openModal(html){ $('#modal').innerHTML = html; $('#overlay').hidden = false; }
+function closeModal(){ $('#overlay').hidden = true; }
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, 3800); }
+async function toasts(msgs){ for(const m of msgs){ toast(m); confetti(90); await sleep(2600); } }
+
+let actx;
+function ac(){ if(!soundOn) return null; try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }catch(e){ return null; } }
+/* Fröhliches "Pling" (UI-Feedback); Name historisch aus der Enten-Zeit */
+function quack(times=2){
+  const a = ac(); if(!a) return;
+  const notes = [784, 988, 1175, 1568];
+  for(let i=0;i<Math.min(times+1, 4);i++){
+    const t = a.currentTime + i*0.09;
+    const o=a.createOscillator(), g=a.createGain();
+    o.type='triangle'; o.frequency.value = notes[i];
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.3,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t+0.26);
+  }
+}
+/* Startpfiff */
+function whistle(){
+  const a = ac(); if(!a) return;
+  const t = a.currentTime, o = a.createOscillator(), g = a.createGain(), lfo = a.createOscillator(), lg = a.createGain();
+  o.type = 'sine'; o.frequency.value = 2400; lfo.frequency.value = 28; lg.gain.value = 120;
+  lfo.connect(lg).connect(o.frequency);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.25,t+0.03); g.gain.setValueAtTime(0.25,t+0.4); g.gain.exponentialRampToValueAtTime(0.0001,t+0.55);
+  o.connect(g).connect(a.destination); o.start(t); lfo.start(t); o.stop(t+0.56); lfo.stop(t+0.56);
+}
+function beep(){
+  const a = ac(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain(), t=a.currentTime;
+  o.type='square'; o.frequency.value=520;
+  g.gain.setValueAtTime(0.08,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.15);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t+0.16);
+}
+function cheer(){
+  const a = ac(); if(!a) return;
+  const len = 1.6, b = a.createBuffer(1, a.sampleRate*len, a.sampleRate), d = b.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * (0.6 + 0.4*Math.sin(i/900));
+  const s=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(), t=a.currentTime;
+  s.buffer=b; f.type='bandpass'; f.frequency.value=1400; f.Q.value=0.6;
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.22,t+0.15); g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+  s.connect(f).connect(g).connect(a.destination); s.start();
+}
+/* Kleine Soundeffekte */
+function sfx(kind){
+  const a = ac(); if(!a) return;
+  const t = a.currentTime, g = a.createGain(); g.connect(a.destination);
+  if(kind === 'bonk'){
+    const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(220,t); o.frequency.exponentialRampToValueAtTime(70,t+0.25);
+    g.gain.setValueAtTime(0.35,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.3); o.connect(g); o.start(t); o.stop(t+0.3);
+  } else if(kind === 'whoosh'){
+    const b = a.createBuffer(1, a.sampleRate*0.5, a.sampleRate), d = b.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    const s = a.createBufferSource(), f = a.createBiquadFilter(); s.buffer = b; f.type = 'bandpass'; f.Q.value = 2;
+    f.frequency.setValueAtTime(400,t); f.frequency.exponentialRampToValueAtTime(3000,t+0.4);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.18,t+0.1); g.gain.exponentialRampToValueAtTime(0.0001,t+0.45);
+    s.connect(f).connect(g); s.start(t);
+  }
+}
+
+/* Renn-Musik: kleiner Chiptune-Loop (I–vi–IV–V), in der Zeitlupe halbes Tempo */
+const Music = (() => {
+  const BASS = [48,45,41,43];
+  const MEL = [72,null,76,79,76,null,72,74, 72,null,69,72,76,null,74,72, 69,null,72,77,76,null,74,72, 74,null,71,74,79,null,77,74];
+  let timer = null, step = 0, next = 0, tempo = 1, master = null;
+  const f = n => 440*Math.pow(2,(n-69)/12);
+  function note(a, freq, t, len, type, vol){
+    const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+len); o.connect(g).connect(master); o.start(t); o.stop(t+len+0.02);
+  }
+  function drum(a, t, kind){
+    if(kind === 'kick'){ const o = a.createOscillator(), g = a.createGain(); o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(40,t+0.12);
+      g.gain.setValueAtTime(0.8,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.15); o.connect(g).connect(master); o.start(t); o.stop(t+0.16); return; }
+    const len = kind === 'snare' ? 0.12 : 0.03, b = a.createBuffer(1, Math.ceil(a.sampleRate*len), a.sampleRate), d = b.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    const s = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain(); s.buffer = b;
+    fl.type = kind === 'snare' ? 'bandpass' : 'highpass'; fl.frequency.value = kind === 'snare' ? 1800 : 7000;
+    g.gain.setValueAtTime(kind === 'snare' ? 0.35 : 0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t+len);
+    s.connect(fl).connect(g).connect(master); s.start(t);
+  }
+  function schedule(){
+    const a = actx; if(!a) return;
+    while(next < a.currentTime + 0.2){
+      const dur = 0.2/tempo, bar = Math.floor(step/8)%4, s8 = step%8, m = MEL[step%32];
+      note(a, f(BASS[bar] + (s8%2 ? 12 : 0)), next, dur*0.9, 'triangle', 0.5);
+      if(m) note(a, f(m), next, dur*0.8, 'square', 0.12);
+      if(s8 === 0 || s8 === 4) drum(a, next, 'kick');
+      if(s8 === 2 || s8 === 6) drum(a, next, 'snare');
+      drum(a, next, 'hat');
+      next += dur; step++;
+    }
+  }
+  return {
+    start(){ const a = ac(); if(!a) return; this.stop(); master = a.createGain(); master.gain.value = 0.13; master.connect(a.destination);
+      tempo = 1; step = 0; next = a.currentTime + 0.05; timer = setInterval(schedule, 50); },
+    slow(){ tempo = 0.5; },
+    stop(){ clearInterval(timer); timer = null; if(master){ const m = master; try{ m.gain.setTargetAtTime(0.0001, actx.currentTime, 0.05); }catch(e){} setTimeout(()=>m.disconnect(), 300); master = null; } }
+  };
+})();
+
+function confetti(n=180){
+  const c=$('#confetti'), ctx=c.getContext('2d');
+  c.width=innerWidth; c.height=innerHeight;
+  const ps = Array.from({length:n}, ()=>({x:innerWidth/2+(Math.random()-.5)*240, y:innerHeight*0.35, vx:(Math.random()-.5)*16, vy:-Math.random()*15-4,
+    r:5+Math.random()*5, c:pick(COLORS), a:Math.random()*6, va:(Math.random()-.5)*.35, duck:Math.random()<.08}));
+  let f=0;
+  (function step(){
+    ctx.clearRect(0,0,c.width,c.height);
+    ps.forEach(p=>{ p.vy+=.33; p.x+=p.vx; p.y+=p.vy; p.vx*=.99; p.a+=p.va;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a);
+      if(p.duck){ ctx.font='22px serif'; ctx.fillText('🍂',-11,8); } else { ctx.fillStyle=p.c; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*1.6); }
+      ctx.restore(); });
+    if(++f < 200) requestAnimationFrame(step); else ctx.clearRect(0,0,c.width,c.height);
+  })();
+}
+
+/* ---------- Aktionen ---------- */
+const actions = {
+  tab: id => { if(!racing) showTab(id); },
+  sound: () => { soundOn = !soundOn; try{ localStorage.setItem('rr.sound', soundOn ? '1' : '0'); }catch(e){} renderAll(); if(soundOn) quack(1); },
+  toPond: () => {
+    if(!$('#prTitle').value.trim() && !$('#prUrl').value.trim()){ toast('Gib dem PR wenigstens einen Titel oder Link 🙂'); $('#prTitle').focus(); return; }
+    const pr = readPrForm(); S.prs.push(pr); save(); clearPrForm(); quack(1);
+    toast(`🍂 „${pr.title}“ liegt jetzt auf dem Laubhaufen und wartet aufs Daily Derby.`); renderAll();
+  },
+  instant: () => { if(racing) return; const pr = readPrForm(); clearPrForm(); derby = null; startRace(pr); },
+  instantPond: id => { if(racing) return; derby = null; startRace(S.prs.find(p => p.id === id)); },
+  derby: () => startDerby(),
+  skip: () => { if(HAS3D) R3.skip(); Music.stop(); },
+  claimOpen: id => {
+    if(racing) return;
+    const p = S.prs.find(x => x.id === id); if(!p) return;
+    const who = S.members.filter(m => !m.away && m.id !== p.author);
+    openModal(`<h3>🙋 Wer übernimmt?</h3>
+      <div class="muted">${esc(p.title)} · <span class="bonus">+${claimBonus(p)} XP Bonus</span></div>
+      <div class="picker">${who.map(m => `<button data-act="claimPond" data-id="${p.id}:${m.id}">${avatar(m)}<span>${esc(m.name)}</span></button>`).join('')}</div>
+      <div class="btns"><button data-act="close">Abbrechen</button></div>`);
+  },
+  claimPond: key => {
+    if(racing) return;
+    const [id, mid] = key.split(':'), p = S.prs.find(x => x.id === id), m = M(mid);
+    if(!p || !m) return;
+    closeModal();
+    Object.assign(p, {status:'open', reviewer:mid, assignedAt:Date.now(), claimed:true, claimBonus:claimBonus(p)});
+    save(); quack(2); confetti(120);
+    toast(`🙋 ${m.name} schnappt sich „${p.title}“! +${p.claimBonus} XP Bonus beim Abschluss`);
+    renderAll();
+  },
+  accept: () => {
+    const {pr, winner} = pendingResult;
+    Object.assign(pr, {status:'open', reviewer:winner.id, assignedAt:Date.now()});
+    if(!S.prs.includes(pr)) S.prs.push(pr);
+    save(); closeModal(); pendingResult = null;
+    if(derby){ derby.results.push({pr, winner}); renderPond(); setTimeout(nextHeat, 600); return; }
+    exitCinema();
+    toast(`📋 „${pr.title}“ liegt jetzt bei ${winner.name}. Die Speed-Bonus-Uhr läuft ⚡`);
+    renderAll();
+  },
+  copySummary: async () => { toast(await copyText(summaryText()) ? '📋 Kopiert! Jetzt einfach in Teams einfügen.' : '❌ Kopieren hat nicht geklappt'); },
+  endDerby: () => { closeModal(); derby = null; exitCinema(); renderAll(); },
+  joker: () => {
+    const {pr, winner, excluded} = pendingResult;
+    if(winner.jokers <= 0) return;
+    winner.jokers--; save(); closeModal(); pendingResult = null;
+    say(`🃏 ${winner.name} setzt einen Joker ein! Neustart …`);
+    toast(`🃏 ${winner.name} setzt einen Joker ein! Neues Rennen …`);
+    setTimeout(()=>startRace(pr, [...excluded, winner.id]), 1400);
+  },
+  steal: id => {
+    const p = S.prs.find(x=>x.id===id), to = $('#steal-'+id).value, from = p.reviewer;
+    Object.assign(p, {stolen:true, stolenFrom:from, bounty:bountyNow(p), reviewer:to, claimed:false});
+    save(); quack(2); confetti(100);
+    toast(`🏴‍☠️ ${M(to).name} kapert den PR von ${M(from)?.name||'?'}! Kopfgeld: +${p.bounty} XP`);
+    renderAll();
+  },
+  done: id => {
+    const p = S.prs.find(x=>x.id===id);
+    openModal(`<h3>✅ Review erledigt?</h3>
+      <div class="muted">${esc(p.title)} · ${esc(M(p.reviewer)?.name||'?')}</div>
+      <label style="flex-direction:row;align-items:center;justify-content:center;gap:8px;margin-top:14px;color:var(--ink)">
+        <input type="checkbox" id="kudos" style="width:22px;height:22px"> 💛 Autor:in sagt: Das Review war hilfreich (+10 XP)
+      </label>
+      <div class="breakdown" id="bd"></div>
+      <div class="btns"><button class="btn-good" data-act="confirmDone" data-id="${id}">🎉 XP kassieren</button><button data-act="close">Abbrechen</button></div>`);
+    const upd = () => { const rr = rewardFor(p, $('#kudos').checked);
+      $('#bd').innerHTML = rr.parts.map(([l,x])=>`<div><span>${l}</span><span>+${x}</span></div>`).join('') + `<div class="sum"><span>Gesamt</span><span>${rr.total} XP</span></div>`; };
+    $('#kudos').onchange = upd; upd();
+  },
+  confirmDone: id => {
+    const p = S.prs.find(x=>x.id===id), kudos = $('#kudos').checked, r = rewardFor(p, kudos), m = M(p.reviewer);
+    Object.assign(p, {status:'done', doneAt:Date.now(), xp:r.total, kudos});
+    const msgs = m ? award(m, r.total, kudos) : [];
+    save(); closeModal(); quack(3); confetti();
+    toasts([`🎉 ${m?.name||'?'} kassiert ${r.total} XP!`, ...msgs]);
+    renderAll();
+  },
+  delPr: id => { if(confirm('PR ohne XP entfernen?')){ S.prs = S.prs.filter(p=>p.id!==id); save(); renderAll(); } },
+  close: () => closeModal(),
+  pickAnimal: k => {
+    const m = M(wdMemberId); if(!m || !ANIMALS[k]) return;
+    if(!canEdit(m)){ toast(`🔒 Das Tier von ${m.name} kann nur ${m.name} selbst ändern.`); return; }
+    m.animal = k; wdPeek = null; save(); renderAll();
+  },
+  pickItem: key => {
+    const [cat, id] = key.split(':'), m = M(wdMemberId), it = itemOf(cat, id);
+    if(!m || !it) return;
+    if(it[3] > level(m.totalXp) || !canEdit(m)){ wdPeek = {cat, id, need:it[3], foreign:!canEdit(m)}; }
+    else { wdPeek = null; m.look = Object.assign({}, m.look, {[cat]:id}); save(); }
+    renderAll();
+    if(cat === 'dance' && preview) preview.dance();
+  },
+  danceTest: () => { if(preview) preview.dance(); quack(2); },
+  newSeason: () => {
+    if(!confirm('Neue Season starten? Season-XP und -Reviews werden auf 0 gesetzt. Level, Joker und Kudos bleiben.')) return;
+    const top = [...S.members].sort((a,b)=>b.seasonXp-a.seasonXp)[0];
+    S.members.forEach(m=>{ m.seasonXp=0; m.seasonReviews=0; });
+    S.seasonNo++; S.seasonStart = Date.now(); save(); renderAll(); confetti();
+    if(top) toast(`👑 Season ${S.seasonNo-1} geht an ${top.name}! Auf in Season ${S.seasonNo}!`);
+  },
+  addMember: () => { S.members.push(newMember('Neu', 100, S.members.length)); save(); renderAll(); },
+  delMember: id => { if(confirm(`${M(id).name} wirklich entfernen?`)){ S.members = S.members.filter(m=>m.id!==id); save(); renderAll(); } },
+  export: () => {
+    const b = new Blob([JSON.stringify(S,null,2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+    a.download = `review-rally-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
+  },
+  import: () => $('#importFile').click(),
+  resetAll: () => { if(confirm('Wirklich ALLES löschen?')){ S = defaultState(); save(); renderAll(); } },
+};
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if(b && !b.disabled && actions[b.dataset.act]) actions[b.dataset.act](b.dataset.id, b);
+});
+document.addEventListener('change', e => {
+  const el = e.target, f = el.dataset.field;
+  if(f){
+    const m = M(el.dataset.id); if(!m) return;
+    if(f==='pct') m.pct = Math.min(100, Math.max(10, parseInt(el.value)||100));
+    else if(f==='away') m.away = el.checked;
+    else if(f==='name'){ if(!canEdit(m)) return; m.name = el.value.trim() || m.name; }
+    else m[f] = el.value;
+    save(); renderAll();
+  }
+  if(el.id==='prAuthor') renderField();
+  if(el.id==='wdMember'){ wdMemberId = el.value; wdPeek = null; renderWardrobe(); }
+  if(el.id==='importFile' && el.files[0]){
+    el.files[0].text().then(t => { const d = JSON.parse(t); if(!Array.isArray(d.members)) throw 0; S = d; save(); renderAll(); toast('⬆️ Import erfolgreich'); })
+      .catch(() => toast('❌ Das ist keine gültige Derby-Datei')).finally(() => el.value='');
+  }
+});
+$('#overlay').addEventListener('click', e => { if(e.target.id==='overlay' && !pendingResult && !derby) closeModal(); });
+setInterval(() => { if(!racing){ renderReviews(); renderPond(); } }, 30000);
+if(document.fonts && HAS3D) document.fonts.ready.then(() => { R3.refreshLabels(); if(!racing) renderField(); });
+
+/* =====================================================================
+   SERVER-SYNC & PROFILE
+   Ohne Server (Datei per Doppelklick geöffnet) läuft alles wie bisher lokal.
+   Mit Server: Änderungen werden feldweise als Patch geschickt, alle 3 s wird
+   nach Neuem gefragt. Fremde Änderungen werden "in place" eingemischt, damit
+   laufende Rennen ihre Objekt-Referenzen behalten.
+   ===================================================================== */
+let soundOn = (() => { try{ return localStorage.getItem('rr.sound') !== '0'; }catch(e){ return true; } })();
+const ME_KEY = 'rr.me';
+let me = (() => { try{ return JSON.parse(localStorage.getItem(ME_KEY)) || null; }catch(e){ return null; } })();
+const SERVER = {on:false, version:0, base:null, owners:[], pushing:false, dirty:false, offline:false, renderPending:false};
+const SYNC_TOP = ['seasonNo','seasonStart'];
+const clone = o => JSON.parse(JSON.stringify(o));
+const myMember = () => me ? M(me.id) : null;
+function canEdit(m){ return !SERVER.on || !!(me && m && me.id === m.id); }
+function setMe(v){ me = v; try{ v ? localStorage.setItem(ME_KEY, JSON.stringify(v)) : localStorage.removeItem(ME_KEY); }catch(e){} }
+
+function save(){
+  if(!SERVER.on){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} return; }
+  SERVER.dirty = true;
+  if(!SERVER.pushing) setTimeout(push, 120);
+}
+async function api(method, url, body){
+  const headers = {'Content-Type':'application/json'};
+  if(me){ headers['X-Member'] = me.id; headers['X-Token'] = me.token; }
+  const r = await fetch(url, {method, headers, body: body ? JSON.stringify(body) : undefined, cache:'no-store'});
+  if(r.status === 204) return null;
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw Object.assign(new Error(j.error || r.statusText), {status:r.status});
+  return j;
+}
+/* Unterschied base → cur, feldweise je Mitglied/PR */
+function diffState(a, b){
+  const p = {top:{}, members:{}, prs:{}}; let n = 0;
+  SYNC_TOP.forEach(k => { if(JSON.stringify(a[k]) !== JSON.stringify(b[k])){ p.top[k] = b[k]; n++; } });
+  for(const c of ['members','prs']){
+    const am = new Map((a[c]||[]).map(x => [x.id, x])), bm = new Map((b[c]||[]).map(x => [x.id, x]));
+    bm.forEach((o, id) => {
+      const old = am.get(id);
+      if(!old){ p[c][id] = {__new:clone(o)}; n++; return; }
+      const ch = {}; let k = 0;
+      new Set([...Object.keys(old), ...Object.keys(o)]).forEach(f => {
+        if(f === 'id' || JSON.stringify(old[f]) === JSON.stringify(o[f])) return;
+        ch[f] = o[f] === undefined ? {__unset:true} : clone(o[f]); k++;
+      });
+      if(k){ p[c][id] = ch; n++; }
+    });
+    am.forEach((o, id) => { if(!bm.has(id)){ p[c][id] = '__del'; n++; } });
+  }
+  return n ? p : null;
+}
+function applyPatch(t, p){
+  if(!p) return;
+  Object.entries(p.top || {}).forEach(([k, v]) => t[k] = v);
+  for(const c of ['members','prs']) Object.entries(p[c] || {}).forEach(([id, ch]) => {
+    const i = t[c].findIndex(x => x.id === id);
+    if(ch === '__del'){ if(i >= 0) t[c].splice(i, 1); return; }
+    if(ch.__new){ if(i < 0 && c !== 'members') t[c].push(Object.assign(clone(ch.__new), {id})); return; }
+    if(i < 0) return;
+    Object.entries(ch).forEach(([f, v]) => { if(v && v.__unset) delete t[c][i][f]; else t[c][i][f] = v; });
+  });
+}
+/* Lokalen Stand auf Server-Stand bringen, ohne Objekte auszutauschen */
+function mergeInPlace(t, r){
+  SYNC_TOP.forEach(k => t[k] = r[k]);
+  for(const c of ['members','prs']){
+    const ids = new Set(r[c].map(x => x.id));
+    for(let i = t[c].length - 1; i >= 0; i--) if(!ids.has(t[c][i].id)) t[c].splice(i, 1);
+    r[c].forEach(ro => {
+      const lo = t[c].find(x => x.id === ro.id);
+      if(lo){ Object.keys(lo).forEach(f => { if(!(f in ro)) delete lo[f]; }); Object.assign(lo, clone(ro)); }
+      else t[c].push(clone(ro));
+    });
+  }
+}
+function adopt(d, leftovers){
+  mergeInPlace(S, d.state);
+  applyPatch(S, leftovers);
+  SERVER.base = clone(d.state); SERVER.version = d.version; SERVER.owners = d.owners || [];
+  if(me && d.meOk === false && !d.token){ setMe(null); toast('Dein Login ist ungültig geworden. Bitte neu anmelden.'); }
+  if(leftovers){ SERVER.dirty = true; setTimeout(push, 50); }
+}
+async function push(){
+  if(SERVER.pushing || !SERVER.dirty) return;
+  SERVER.dirty = false;
+  const patch = diffState(SERVER.base, S);
+  if(!patch) return;
+  SERVER.pushing = true;
+  const sent = clone(S);
+  try{
+    const d = await api('POST', '/api/patch', {patch});
+    if(d.rejected && d.rejected.length) toast('🔒 Name, Tier und Garderobe kann nur die Person selbst ändern.');
+    adopt(d, diffState(sent, S));   // was seit dem Senden lokal dazukam, bleibt erhalten
+    SERVER.offline = false; safeRender();
+  }catch(e){
+    SERVER.dirty = true;
+    if(!SERVER.offline){ SERVER.offline = true; toast('⚠️ Server nicht erreichbar. Änderungen werden nachgeschickt.'); }
+    setTimeout(push, 4000);
+  }finally{ SERVER.pushing = false; }
+}
+async function poll(){
+  if(!SERVER.on || SERVER.pushing || SERVER.dirty) return;
+  try{
+    const d = await api('GET', '/api/state?v=' + SERVER.version);
+    if(SERVER.offline){ SERVER.offline = false; toast('✅ Wieder verbunden.'); }
+    if(d && !SERVER.pushing && !SERVER.dirty){ adopt(d, diffState(SERVER.base, S)); safeRender(); }
+  }catch(e){ if(!SERVER.offline){ SERVER.offline = true; toast('⚠️ Server nicht erreichbar …'); } }
+}
+/* Nicht neu zeichnen, während jemand in ein Feld tippt */
+function safeRender(){
+  const a = document.activeElement;
+  if(a && /INPUT|SELECT|TEXTAREA/.test(a.tagName) && a.closest('main')){ SERVER.renderPending = true; return; }
+  renderAll();
+}
+document.addEventListener('focusout', () => { if(SERVER.renderPending){ SERVER.renderPending = false; setTimeout(renderAll, 0); } });
+
+/* ---------- Profil ---------- */
+function renderMe(){
+  const b = $('#meBtn'); if(!b) return;
+  b.hidden = !SERVER.on;
+  const m = myMember();
+  b.innerHTML = m ? `${avatar(m)} <span>${esc(m.name)}</span>` : '👤 Anmelden';
+  b.classList.toggle('mebtn', !!m);
+  $('#addMemberBtn').hidden = SERVER.on; $('#joinHint').hidden = !SERVER.on;
+  $('#importBtn').hidden = SERVER.on; $('#resetBtn').hidden = SERVER.on;
+  $('#dataHint').textContent = SERVER.on
+    ? 'Die Daten liegen auf dem Server und sind für das ganze Team gleich. Der Export ist ein Backup.'
+    : 'Alles wird lokal in diesem Browser gespeichert. Mit Export/Import könnt ihr die Daten sichern oder umziehen.';
+  $('#serverImportBtn').hidden = !(SERVER.on && !S.members.length && !S.prs.length && localData());
+}
+function localData(){
+  try{ const d = JSON.parse(localStorage.getItem(STORE)); return d && Array.isArray(d.members) && d.members.length ? d : null; }catch(e){ return null; }
+}
+function openProfile(){
+  const m = myMember();
+  if(m){
+    openModal(`${avatar(m,'big')}<h3>Hallo ${esc(m.name)}!</h3>
+      <div class="muted">${ANIMALS[animalOf(m)].name} · Level ${level(m.totalXp)} · ${titleOf(level(m.totalXp))}</div>
+      <p class="hint" style="margin-top:14px">Du willst dich in einem anderen Browser anmelden? Kopier dir deinen persönlichen Login-Link. Wer den Link hat, kann dein Profil bearbeiten, also nicht weitergeben.</p>
+      <div class="btns">
+        <button class="btn-primary" data-act="goWardrobe">🎩 Zur Garderobe</button>
+        <button data-act="copyLogin">🔗 Login-Link kopieren</button>
+        <button data-act="logout">Abmelden</button>
+      </div>`);
+    return;
+  }
+  const free = S.members.filter(x => !SERVER.owners.includes(x.id));
+  openModal(`<h3>👋 Wer bist du?</h3>
+    ${free.length ? `<div class="muted">Ist dein Profil schon da? Dann klick drauf:</div>
+      <div class="picker">${free.map(x => `<button data-act="claimMe" data-id="${x.id}">${avatar(x)}<span>${esc(x.name)}</span></button>`).join('')}</div>
+      <div class="muted" style="margin-top:16px">Oder neu anlegen:</div>` : `<div class="muted">Leg dein Profil an:</div>`}
+    <div class="row" style="margin-top:10px;text-align:left">
+      <label>Name<input id="joinName" maxlength="40" placeholder="z. B. Norman"></label>
+      <label>Tier<select id="joinAnimal">${Object.entries(ANIMALS).map(([k,a]) => `<option value="${k}">${a.emoji} ${a.name}</option>`).join('')}</select></label>
+    </div>
+    <p class="hint" style="text-align:left;margin:0">Tier und Garderobe kannst du später jederzeit in der 🎩 Garderobe ändern, und nur du.</p>
+    <div class="btns"><button class="btn-primary" data-act="joinMe">✨ Profil anlegen</button><button data-act="close">Später</button></div>`);
+  setTimeout(() => $('#joinName')?.focus(), 50);
+}
+async function loginWith(promise, okMsg){
+  try{
+    const d = await promise;
+    setMe({id:d.id, token:d.token});
+    adopt(d, null); closeModal(); wdMemberId = d.id; wdPeek = null;
+    toast(okMsg); quack(3); confetti(120); renderAll();
+  }catch(e){ toast('❌ ' + e.message); }
+}
+Object.assign(actions, {
+  profile: () => openProfile(),
+  joinMe: () => {
+    const name = $('#joinName').value.trim();
+    if(!name){ toast('Wie heißt du? 🙂'); $('#joinName').focus(); return; }
+    loginWith(api('POST', '/api/join', {name, animal:$('#joinAnimal').value}), `🎉 Willkommen, ${name}! Schau gleich mal in die Garderobe.`);
+  },
+  claimMe: id => {
+    const m = M(id); if(!m || !confirm(`Bist du wirklich ${m.name}? Danach kann nur noch dieser Browser das Profil bearbeiten.`)) return;
+    loginWith(api('POST', '/api/claim', {id}), `🎉 Hallo ${m.name}, du bist angemeldet!`);
+  },
+  logout: () => { if(!confirm('Abmelden? Ohne deinen Login-Link kommst du dann nicht mehr an dein Profil.')) return; setMe(null); closeModal(); renderAll(); },
+  copyLogin: async () => {
+    const url = `${location.origin}${location.pathname}#login=${me.id}.${me.token}`;
+    toast(await copyText(url) ? '🔗 Login-Link kopiert. Gut aufheben, nicht weitergeben!' : '❌ Kopieren hat nicht geklappt');
+  },
+  goWardrobe: () => { closeModal(); wdMemberId = me && me.id; wdPeek = null; showTab('wardrobe'); },
+  serverImport: async () => {
+    const d = localData(); if(!d) return;
+    if(!confirm(`${d.members.length} Teammitglieder und ${(d.prs||[]).length} PRs aus diesem Browser auf den Server übernehmen?`)) return;
+    try{ migrate(d); const r = await api('POST', '/api/import', {state:d}); adopt(r, null); renderAll(); toast('📦 Übernommen! Jetzt kann jede:r über 👤 sein Profil beanspruchen.'); }
+    catch(e){ toast('❌ ' + e.message); }
+  }
+});
+
+async function boot(){
+  const hm = location.hash.match(/login=([\w-]+)\.([\w-]+)/);
+  if(hm){ setMe({id:hm[1], token:hm[2]}); history.replaceState(null, '', location.pathname + location.search); }
+  if(/^https?:$/.test(location.protocol)){
+    try{
+      const d = await api('GET', '/api/state');
+      SERVER.on = true;
+      S = clone(d.state); SERVER.base = clone(d.state); SERVER.version = d.version; SERVER.owners = d.owners || [];
+      if(me && !d.meOk){ setMe(null); toast('Dein gespeicherter Login passt nicht mehr. Bitte neu anmelden.'); }
+      migrate(S); save();               // fehlende Tiere ergänzen (nur falls nötig)
+      setInterval(poll, 3000);
+    }catch(e){ /* kein Server → lokaler Modus */ }
+  }
+  renderAll();
+  if(SERVER.on && !myMember()) setTimeout(openProfile, 500);
+}
+
+boot();
+</script>
+</body>
+</html>
