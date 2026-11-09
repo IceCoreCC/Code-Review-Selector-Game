@@ -118,7 +118,7 @@ function applyPatch(patch, req){
 
 /* ---------- HTTP ---------- */
 function send(res, code, body, type = 'application/json; charset=utf-8'){
-  const data = body === undefined ? '' : (typeof body === 'string' ? body : JSON.stringify(body));
+  const data = body === undefined ? '' : (typeof body === 'string' || Buffer.isBuffer(body)) ? body : JSON.stringify(body);
   res.writeHead(code, {'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'});
   res.end(data);
 }
