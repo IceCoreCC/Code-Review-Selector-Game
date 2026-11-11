@@ -1,0 +1,4 @@
+# Nur server.js und index.html gehören ins Image
+*
+!server.js
+!index.html
