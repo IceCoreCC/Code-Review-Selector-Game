@@ -1,4 +1,3 @@
 # Laufzeitdaten des Servers (Namen, PRs, Login-Hashes) – niemals committen
 data/
 *.tmp
-node_modules/

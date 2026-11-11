@@ -96,7 +96,6 @@ td .ava.mini{width:34px;height:34px}
 .picker .ava.mini{width:56px;height:56px}
 .summary{text-align:left;margin-top:12px}
 .summary div{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--panel2)}
-.summary svg{width:36px;height:32px;flex:none}
 .no3d{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:#103;font-size:18px}
 
 /* Garderobe */
@@ -297,7 +296,7 @@ td input[type=number]{width:80px}
 <div id="toast" hidden></div>
 
 <script>
-const STORE = 'duckderby.v1';
+const STORE = 'duckderby.v1';   // alter Name bleibt, sonst wären lokal gespeicherte Daten weg
 const HOUR = 36e5, DAY = 864e5;
 const SIZES = { S:{name:'S · Kleinkram',xp:10}, M:{name:'M · Normal',xp:20}, L:{name:'L · Brocken',xp:35}, XL:{name:'XL · Monster',xp:50} };
 const COLORS = ['#ffd23f','#ff7aa2','#7ae0ff','#b19cff','#7dff9b','#ffa94d','#ff6b6b','#f0f0f0'];
@@ -353,7 +352,7 @@ function newMember(name, pct, i){
 }
 function defaultState(){
   const names = [['Anna',100],['Ben',100],['Chris',100],['Dana',50],['Emil',80],['Fiona',60]];
-  return {members:names.map(([n,p],i)=>newMember(n,p,i)), prs:[], seasonNo:1, seasonStart:Date.now(), sound:true};
+  return {members:names.map(([n,p],i)=>newMember(n,p,i)), prs:[], seasonNo:1, seasonStart:Date.now()};
 }
 function migrate(s){
   (s.members||[]).forEach((m,i) => { if(!ANIMALS[m.animal]) m.animal = ANIMAL_ORDER[i % ANIMAL_ORDER.length]; delete m.color; });
@@ -423,7 +422,7 @@ function avatar(m, cls='mini'){
 const R3 = (() => {
   if(!window.THREE) return null;
   const TAU = Math.PI*2, L = 120, LANE = 3.4;
-  let renderer, scene, camera, sun, hemi, world, dyn, nLanes = 0, W = 0, time = 0, ENV = null, ps = null;
+  let renderer, scene, camera, sun, world, dyn, nLanes = 0, W = 0, time = 0, ENV = null, ps = null;
   let mode = 'idle', fieldKey = '', race = null, celebrateId = null, introT = 0, celebrateT = 0;
   const runners = new Map(); let obstacles = [], spectators = [], clouds = [], confetti3 = [], leaves = [];
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(); let camCut = true, shake = 0;
@@ -1415,7 +1414,7 @@ const R3 = (() => {
     scene = new THREE.Scene();
     scene.background = new THREE.Color('#a8dcf0'); scene.fog = new THREE.Fog('#b9e0d2', 60, 200);
     camera = new THREE.PerspectiveCamera(50, 1, 0.1, 600);
-    hemi = new THREE.HemisphereLight('#fff6e0', '#4a6b2a', 0.8); scene.add(hemi);
+    scene.add(new THREE.HemisphereLight('#fff6e0', '#4a6b2a', 0.8));
     sun = new THREE.DirectionalLight('#fff1d0', 1.05); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     Object.assign(sun.shadow.camera, {left:-40, right:40, top:40, bottom:-40, near:1, far:160});
@@ -1740,7 +1739,7 @@ const R3 = (() => {
       race.rt = race.endT - 0.05;
     },
     refreshLabels(){ fieldKey = ''; pCache.clear(); },
-    createPreview, portrait, shot
+    createPreview, portrait
   };
 })();
 const HAS3D = !!(R3 && R3.ok);
@@ -1883,7 +1882,7 @@ async function startRace(pr, excluded=[]){
   }
   racing = true; renderField();
   const winner = weightedPick(field);
-  if(!HAS3D){ racing = false; quack(3); confetti(); showResult(pr, winner, excluded); return; }
+  if(!HAS3D){ racing = false; chime(3); confetti(); showResult(pr, winner, excluded); return; }
 
   const WT = 10 + Math.random()*2.5;
   let close = Math.random() < 0.5;
@@ -1909,7 +1908,7 @@ async function startRace(pr, excluded=[]){
   const fotoT = sorted.length>1 && sorted[1]-sorted[0] < 0.45 ? setTimeout(()=>say('📸 Fotofinish! Das wird knapp!'), (WT-2.2)*1000) : null;
   await R3.race(field, plans, winner);
   clearTimeout(fotoT); Music.stop(); $('#skipBtn').hidden = true;
-  quack(3); cheer();
+  chime(3); cheer();
   R3.celebrate(winner.id);
   say(`🏆 ${winner.name} gewinnt und reviewt!`);
   await sleep(2400);
@@ -1925,7 +1924,7 @@ function showSummary(){
   openModal(`<h3>🏁 Daily Derby vorbei!</h3>
     <div class="summary">${lines}</div>
     <div class="btns"><button data-act="copySummary">📋 Für Teams kopieren</button><button class="btn-good" data-act="endDerby">✅ Fertig</button></div>`);
-  quack(2); confetti();
+  chime(2); confetti();
 }
 function summaryText(){
   const d = new Date().toLocaleDateString('de-DE');
@@ -2130,8 +2129,8 @@ async function toasts(msgs){ for(const m of msgs){ toast(m); confetti(90); await
 
 let actx;
 function ac(){ if(!soundOn) return null; try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }catch(e){ return null; } }
-/* Fröhliches "Pling" (UI-Feedback); Name historisch aus der Enten-Zeit */
-function quack(times=2){
+/* Fröhliches "Pling" als Rückmeldung bei Aktionen */
+function chime(times=2){
   const a = ac(); if(!a) return;
   const notes = [784, 988, 1175, 1568];
   for(let i=0;i<Math.min(times+1, 4);i++){
@@ -2251,7 +2250,7 @@ function doSteal(id, to){
   if(!p || !m || p.status !== 'open' || p.stolen || !bountyNow(p)) return;
   const from = p.reviewer;
   Object.assign(p, {stolen:true, stolenFrom:from, bounty:bountyNow(p), reviewer:to, claimed:false});
-  save(); quack(2); confetti(100);
+  save(); chime(2); confetti(100);
   toast(`🏴‍☠️ ${m.name} kapert den PR von ${M(from)?.name||'?'}! Kopfgeld: +${p.bounty} XP`);
   renderAll();
 }
@@ -2259,10 +2258,10 @@ function doSteal(id, to){
 /* ---------- Aktionen ---------- */
 const actions = {
   tab: id => { if(!racing) showTab(id); },
-  sound: () => { soundOn = !soundOn; try{ localStorage.setItem('rr.sound', soundOn ? '1' : '0'); }catch(e){} renderAll(); if(soundOn) quack(1); },
+  sound: () => { soundOn = !soundOn; try{ localStorage.setItem('rr.sound', soundOn ? '1' : '0'); }catch(e){} renderAll(); if(soundOn) chime(1); },
   toPond: () => {
     if(!$('#prTitle').value.trim() && !$('#prUrl').value.trim()){ toast('Gib dem PR wenigstens einen Titel oder Link 🙂'); $('#prTitle').focus(); return; }
-    const pr = readPrForm(); S.prs.push(pr); save(); clearPrForm(); quack(1);
+    const pr = readPrForm(); S.prs.push(pr); save(); clearPrForm(); chime(1);
     toast(`🍂 „${pr.title}“ liegt jetzt auf dem Laubhaufen und wartet aufs Daily Derby.`); renderAll();
   },
   instant: () => { if(racing) return; const pr = readPrForm(); clearPrForm(); derby = null; startRace(pr); },
@@ -2285,7 +2284,7 @@ const actions = {
     if(!p || !m) return;
     closeModal();
     Object.assign(p, {status:'open', reviewer:mid, assignedAt:Date.now(), claimed:true, claimBonus:claimBonus(p)});
-    save(); quack(2); confetti(120);
+    save(); chime(2); confetti(120);
     toast(`🙋 ${m.name} schnappt sich „${p.title}“! +${p.claimBonus} XP Bonus beim Abschluss`);
     renderAll();
   },
@@ -2328,7 +2327,7 @@ const actions = {
     const p = S.prs.find(x=>x.id===id), kudos = $('#kudos').checked, r = rewardFor(p, kudos), m = M(p.reviewer);
     Object.assign(p, {status:'done', doneAt:Date.now(), xp:r.total, kudos});
     const msgs = m ? award(m, r.total, kudos) : [];
-    save(); closeModal(); quack(3); confetti();
+    save(); closeModal(); chime(3); confetti();
     toasts([`🎉 ${m?.name||'?'} kassiert ${r.total} XP!`, ...msgs]);
     renderAll();
   },
@@ -2342,12 +2341,12 @@ const actions = {
   pickItem: key => {
     const [cat, id] = key.split(':'), m = M(wdMemberId), it = itemOf(cat, id);
     if(!m || !it) return;
-    if(it[3] > level(m.totalXp) || !canEdit(m)){ wdPeek = {cat, id, need:it[3], foreign:!canEdit(m)}; }
+    if(it[3] > level(m.totalXp) || !canEdit(m)){ wdPeek = {cat, id, need:it[3]}; }
     else { wdPeek = null; m.look = Object.assign({}, m.look, {[cat]:id}); save(); }
     renderAll();
     if(cat === 'dance' && preview) preview.dance();
   },
-  danceTest: () => { if(preview) preview.dance(); quack(2); },
+  danceTest: () => { if(preview) preview.dance(); chime(2); },
   newSeason: () => {
     if(!confirm('Neue Season starten? Season-XP und -Reviews werden auf 0 gesetzt. Level, Joker und Kudos bleiben.')) return;
     const top = [...S.members].sort((a,b)=>b.seasonXp-a.seasonXp)[0];
@@ -2384,7 +2383,7 @@ document.addEventListener('change', e => {
   if(el.id==='wdMember'){ wdMemberId = el.value; wdPeek = null; renderWardrobe(); }
   if(el.id==='importFile' && el.files[0]){
     el.files[0].text().then(t => { const d = JSON.parse(t); if(!Array.isArray(d.members)) throw 0; S = d; save(); renderAll(); toast('⬆️ Import erfolgreich'); })
-      .catch(() => toast('❌ Das ist keine gültige Derby-Datei')).finally(() => el.value='');
+      .catch(() => toast('❌ Das ist keine gültige Review-Rally-Datei')).finally(() => el.value='');
   }
 });
 document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id === 'joinName') actions.joinMe(); });
@@ -2566,7 +2565,7 @@ async function loginWith(promise, okMsg){
     const d = await promise;
     setMe({id:d.id, token:d.token});
     adopt(d, null); closeModal(); wdMemberId = d.id; wdPeek = null;
-    toast(okMsg); quack(3); confetti(120); renderAll();
+    toast(okMsg); chime(3); confetti(120); renderAll();
   }catch(e){ toast('❌ ' + e.message); }
 }
 Object.assign(actions, {
